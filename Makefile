@@ -21,6 +21,7 @@ LIB_OBJS = $(patsubst src/%.cpp,$(BUILD_DIR)/%.o,$(LIB_SRCS))
 LIB_TARGET = $(BUILD_DIR)/liblcdmenu.a
 
 ALL_HEADERS = \
+	examples/demo_common.h \
 	src/LcdMenu.h \
 	src/MenuItem.h \
 	src/MenuScreen.h \
