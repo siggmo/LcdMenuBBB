@@ -20,7 +20,7 @@ template <typename T, typename V = uint8_t>
 class WidgetList : public BaseWidgetValue<V> {
   protected:
     const bool cycle;
-    const std::vector<T>& values;
+    std::vector<T> values;
     V originalValue;
 
   public:

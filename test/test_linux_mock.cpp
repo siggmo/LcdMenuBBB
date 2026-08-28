@@ -310,6 +310,50 @@ void test_rotary_counter_wrap_around() {
     unlink(tempCounter.c_str());
 }
 
+static uint8_t listCallbackIndex = 99;
+void onListTest(const uint8_t index) {
+    listCallbackIndex = index;
+}
+
+void test_list_item() {
+    std::cout << "\n[TEST] test_list_item\n";
+    MockCharacterDisplayAdapter display(20, 4, false);
+    CharacterDisplayRenderer renderer(&display, 20, 4);
+    LcdMenu menu(renderer);
+
+    listCallbackIndex = 99;
+    // Pass temporary rvalue vector
+    MenuScreen mainScreen({
+        ITEM_LIST("Mode", std::vector<const char*>{"ECO", "AUTO", "BOOST"}, onListTest, 0, "%s", 0, true),
+    });
+
+    renderer.begin();
+    menu.setScreen(&mainScreen);
+
+    TEST_ASSERT(display.getRow(0).find("ECO") != std::string::npos, "Initial list item is 'ECO'");
+
+    // Enter edit mode
+    menu.process(ENTER);
+    TEST_ASSERT(MenuItem::isEditing() == true, "ItemList entered edit mode");
+
+    // Advance to next option ("AUTO")
+    menu.process(UP);
+    TEST_ASSERT(display.getRow(0).find("AUTO") != std::string::npos, "ItemList switched to 'AUTO'");
+
+    // Commit selection
+    menu.process(ENTER);
+    TEST_ASSERT(MenuItem::isEditing() == false, "ItemList exited edit mode on 2nd ENTER");
+    TEST_ASSERT(listCallbackIndex == 1, "Callback received index 1 ('AUTO')");
+
+    // Re-enter edit mode and cancel/discard with BACK
+    menu.process(ENTER);
+    menu.process(UP);  // "BOOST" (index 2)
+    TEST_ASSERT(display.getRow(0).find("BOOST") != std::string::npos, "ItemList switched to 'BOOST'");
+    menu.process(BACK);  // Discard
+    TEST_ASSERT(MenuItem::isEditing() == false, "ItemList exited edit mode on BACK (ESC)");
+    TEST_ASSERT(display.getRow(0).find("AUTO") != std::string::npos, "ItemList reverted back to 'AUTO'");
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "Running LcdMenu Linux Unit Tests\n";
@@ -320,6 +364,7 @@ int main() {
     test_toggle_item();
     test_range_item();
     test_range_item_cancel_discards_value();
+    test_list_item();
     test_submenu_and_back();
     test_input_item_commit_and_cancel();
     test_mock_file_dump();
