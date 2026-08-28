@@ -1,22 +1,30 @@
 # LcdMenu - BeagleBone Black (Linux C++)
 
-LcdMenu is a modular C++ library for creating menu systems on character LCDs and embedded user interfaces. This fork is ported to pure, standard modern Linux C++ (C++11/C++17) tailored for the **BeagleBone Black** (Linux 6.x / Debian) and generic POSIX systems.
+LcdMenu is a modular, high-performance C++ library for character LCDs and embedded user interfaces. This fork is ported to pure, standard modern Linux C++ (C++11/C++17) tailored for the **BeagleBone Black** (Linux 6.x / Debian) and generic POSIX systems.
 
 ---
 
 ## Features & Hardware Support
 
-- **Pure Linux C++ Core**: No Arduino or PlatformIO dependencies; uses standard C++11 (`std::chrono`, standard STL containers, POSIX APIs).
-- **Newhaven UART LCD Support**: Native driver for `NHD-0420D3Z-NSW-BBW-V3` 4x20 character displays over serial UART (`/dev/ttyS3` default at 9600 baud, 8N1).
-- **BeagleBone Black Rotary & Button Input**:
+- **Pure Linux C++ Core**: No Arduino, AVR, or PlatformIO dependencies; uses standard C++11 (`std::chrono`, standard STL containers, POSIX APIs).
+- **Newhaven UART LCD Support (`NHD0420D3Z_UARTAdapter`)**:
+  - Native driver for Newhaven `NHD-0420D3Z-NSW-BBW-V3` 4x20 character displays over serial UART (`/dev/ttyS3` default at 9600 baud, 8N1).
+  - **Row-Buffered Differential Shadow Rendering**: Transmits atomic 20-character line updates only when content changes. Idle polling emits **0 serial bytes**, eliminating bus congestion and maintaining 0ms rotary response time.
+  - **Hardware Blinker Anchoring**: Automatically positions and preserves the physical LCD blinking cursor over the active value field during rotary adjustment.
+- **BeagleBone Black Rotary & Button Input (`LinuxRotaryInputAdapter`)**:
   - Quadrature counter ticks read directly from Linux kernel `ti-eqep` driver via Counter Subsystem sysfs (`/sys/bus/counter/devices/counter*/count0/count`).
   - Button presses read from `gpio-keys` (`rotary_btn` / `KEY_ENTER`) via Linux `evdev`.
   - Context-aware rotation: navigation mode uses Up/Down; value editing mode uses Increment/Decrement.
   - **Configurable Divider & Ceiling Wrap-around**: Supports multiple quadrature pulses per physical detent (default `divider = 2`) and handles hardware modulus wrap-around (default `ceiling = 60` for `ti-eqep`, auto-detected via sysfs or set via `setCeiling(int)`).
   - **Short Press (< 500ms)**: Emits `ENTER` to select/toggle or confirm & save in edit mode.
   - **Long Press (>= 500ms)**: Emits `BACK` (ESC) to cancel & discard edits or return to parent menu.
-- **Mock Terminal Display & File Output**: Virtual 4x20 character grid with zero-lag ANSI boxed Terminal User Interface (TUI) and continuous text file dumping for PC simulation and unit tests.
-- **Interactive Keyboard Input**: Non-blocking POSIX raw terminal keyboard reader for desktop testing (`Enter` = Confirm, `Esc` = Cancel & Discard).
+- **Focus-Activated Marquee Scrolling (`ITEM_VALUE`)**:
+  - Long string values display a trailing `>` indicator when truncated.
+  - Automatically begins smooth horizontal marquee scrolling (e.g. at 250ms per step) when the selection arrow reaches the element, and resets immediately upon cursor departure.
+- **Mock Terminal Display & File Output (`MockCharacterDisplayAdapter`)**:
+  - Virtual 4x20 character grid with zero-lag ANSI boxed Terminal User Interface (TUI) and continuous text file dumping for desktop simulation and unit tests.
+- **Interactive Desktop Keyboard Input (`PosixTerminalInputAdapter`)**:
+  - Non-blocking POSIX raw terminal keyboard reader for desktop testing (`Enter` = Confirm, `Esc` = Cancel & Discard, Arrow keys = Navigation).
 
 ---
 
@@ -73,7 +81,7 @@ int main() {
 ## BeagleBone Black Hardware Setup
 
 ### Device Tree Configuration
-The input adapter is designed to work out-of-the-box with standard BeagleBone Black device tree overlays:
+The input adapter works out-of-the-box with standard BeagleBone Black device tree overlays:
 
 ```dts
 // Rotary Encoder (ti-eqep)
@@ -107,35 +115,30 @@ The input adapter is designed to work out-of-the-box with standard BeagleBone Bl
 ### Hardware Integration Example (`examples/bbb_rotary_nhd_demo.cpp`)
 
 ```cpp
+#include "demo_common.h"
 #include <LcdMenu.h>
 #include <display/NHD0420D3Z_UARTAdapter.h>
 #include <input/LinuxRotaryInputAdapter.h>
 #include <renderer/CharacterDisplayRenderer.h>
+#include <unistd.h>
 
-int main() {
-    // 1. Initialize NHD-0420D3Z UART Display on /dev/ttyS3 (9600 baud)
-    NHD0420D3Z_UARTAdapter lcd("/dev/ttyS3", B9600, 20, 4);
+int main(int argc, char* argv[]) {
+    std::string port = (argc > 1) ? argv[1] : "/dev/ttyS3";
+
+    NHD0420D3Z_UARTAdapter lcd(port, B9600, 20, 4);
     CharacterDisplayRenderer renderer(&lcd, 20, 4);
     LcdMenu menu(renderer);
-
-    // 2. Initialize BeagleBone Black Rotary & Button Adapter
     LinuxRotaryInputAdapter rotaryInput(&menu);
-
-    // 3. Define Menus
-    MenuScreen mainScreen({
-        ITEM_BASIC("System Status"),
-        ITEM_TOGGLE("Relay 1", "ON", "OFF"),
-    });
 
     renderer.begin();
     rotaryInput.begin();
-    menu.setScreen(&mainScreen);
+    menu.setScreen(DemoMenu::getMainScreen());
 
-    // 4. Main Event Loop
     while (true) {
         rotaryInput.observe();
-        menu.poll();
-        usleep(10000); // 10ms poll tick
+        DemoMenu::pollTelemetry();
+        menu.poll(50); // 50ms fast polling loop for smooth animations
+        usleep(10000); // 10ms CPU sleep
     }
     return 0;
 }
@@ -151,7 +154,7 @@ Native compilation on the BeagleBone Black (via SSH) or any Linux PC using stand
 # Build static library, unit tests, and all demo binaries
 make all
 
-# Run automated unit test suite
+# Run automated unit test suite (11 unit tests)
 make test
 
 # Run interactive terminal simulation (PC arrow keys & Enter)
@@ -170,4 +173,5 @@ make test
 | `make bbb_demo` | Compiles BeagleBone Black hardware demo `bin/bbb_rotary_nhd_demo` |
 | `make tui_demo` | Compiles interactive terminal simulation `bin/tui_demo` |
 | `make simple` | Compiles starter demo `bin/simple_menu` |
-| `make clean` | Removes build directories and temporary files |
+| `make all` | Builds library, runs tests, and compiles all demo binaries |
+| `make clean` | Removes build directories and binary artifacts |
