@@ -16,7 +16,13 @@ NHD0420D3Z_UARTAdapter::NHD0420D3Z_UARTAdapter(
       maxRows(maxRows),
       fd(-1),
       backlightEnabled(true),
-      blinkerEnabled(false) {}
+      blinkerEnabled(false),
+      physicalCursorCol(0xFF),
+      physicalCursorRow(0xFF),
+      logicalCursorCol(0),
+      logicalCursorRow(0) {
+    shadowBuffer.resize(maxRows, std::string(maxCols, ' '));
+}
 
 NHD0420D3Z_UARTAdapter::~NHD0420D3Z_UARTAdapter() {
     closePort();
@@ -27,7 +33,8 @@ bool NHD0420D3Z_UARTAdapter::openPort() {
         return true;
     }
 
-    fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+    // Open non-blocking so the Linux kernel buffers writes to UART hardware FIFO asynchronously
+    fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fd < 0) {
         fprintf(stderr, "NHD0420D3Z_UARTAdapter: Failed to open %s: %s\n", port.c_str(), strerror(errno));
         return false;
@@ -100,45 +107,66 @@ void NHD0420D3Z_UARTAdapter::begin() {
 void NHD0420D3Z_UARTAdapter::clear() {
     uint8_t cmd[2] = {0xFE, 0x51};
     sendRaw(cmd, sizeof(cmd));
+    for (auto& row : shadowBuffer) {
+        row.assign(maxCols, ' ');
+    }
+    logicalCursorCol = 0;
+    logicalCursorRow = 0;
+    physicalCursorCol = 0;
+    physicalCursorRow = 0;
     usleep(2000);  // Screen clear takes ~1.5ms
 }
 
 void NHD0420D3Z_UARTAdapter::show() {
     uint8_t cmd[2] = {0xFE, 0x41};
     sendRaw(cmd, sizeof(cmd));
-    usleep(100);
 }
 
 void NHD0420D3Z_UARTAdapter::hide() {
     uint8_t cmd[2] = {0xFE, 0x42};
     sendRaw(cmd, sizeof(cmd));
-    usleep(100);
+}
+
+void NHD0420D3Z_UARTAdapter::setCursor(uint8_t col, uint8_t row) {
+    logicalCursorCol = (col < maxCols) ? col : maxCols - 1;
+    logicalCursorRow = (row < maxRows) ? row : maxRows - 1;
 }
 
 void NHD0420D3Z_UARTAdapter::draw(uint8_t byte) {
-    sendRaw(&byte, 1);
-    usleep(50);
+    if (logicalCursorRow < maxRows && logicalCursorCol < maxCols) {
+        char ch = static_cast<char>(byte);
+        // Only transmit byte over UART if it differs from physical display content
+        if (shadowBuffer[logicalCursorRow][logicalCursorCol] != ch) {
+            // Position physical cursor if not already at logical target
+            if (physicalCursorRow != logicalCursorRow || physicalCursorCol != logicalCursorCol) {
+                static const uint8_t rowOffsets[4] = {0x00, 0x40, 0x14, 0x54};
+                uint8_t pos = rowOffsets[logicalCursorRow % 4] + logicalCursorCol;
+                uint8_t cmd[3] = {0xFE, 0x45, pos};
+                sendRaw(cmd, sizeof(cmd));
+                physicalCursorRow = logicalCursorRow;
+                physicalCursorCol = logicalCursorCol;
+            }
+            sendRaw(&byte, 1);
+            shadowBuffer[logicalCursorRow][logicalCursorCol] = ch;
+            physicalCursorCol++;
+            if (physicalCursorCol >= maxCols) {
+                physicalCursorCol = 0;
+                physicalCursorRow = (physicalCursorRow + 1) % maxRows;
+            }
+        }
+        logicalCursorCol++;
+        if (logicalCursorCol >= maxCols) {
+            logicalCursorCol = 0;
+            logicalCursorRow = (logicalCursorRow + 1) % maxRows;
+        }
+    }
 }
 
 void NHD0420D3Z_UARTAdapter::draw(const char* text) {
     if (text == nullptr) return;
-    size_t len = strlen(text);
-    if (len > 0) {
-        sendRaw(text, len);
-        usleep(50 * len);
+    while (*text) {
+        draw(static_cast<uint8_t>(*text++));
     }
-}
-
-void NHD0420D3Z_UARTAdapter::setCursor(uint8_t col, uint8_t row) {
-    // Row start addresses for 4x20 character LCD
-    static const uint8_t rowOffsets[4] = {0x00, 0x40, 0x14, 0x54};
-    uint8_t clampedRow = row < maxRows ? row : maxRows - 1;
-    uint8_t clampedCol = col < maxCols ? col : maxCols - 1;
-
-    uint8_t pos = rowOffsets[clampedRow % 4] + clampedCol;
-    uint8_t cmd[3] = {0xFE, 0x45, pos};
-    sendRaw(cmd, sizeof(cmd));
-    usleep(100);
 }
 
 void NHD0420D3Z_UARTAdapter::setBacklight(bool enabled) {
@@ -151,7 +179,6 @@ void NHD0420D3Z_UARTAdapter::setBrightness(uint8_t level) {
     if (level > 8) level = 8;
     uint8_t cmd[3] = {0xFE, 0x53, level};
     sendRaw(cmd, sizeof(cmd));
-    usleep(100);
 }
 
 void NHD0420D3Z_UARTAdapter::createChar(uint8_t id, uint8_t* c) {
@@ -169,12 +196,10 @@ void NHD0420D3Z_UARTAdapter::drawBlinker() {
     blinkerEnabled = true;
     uint8_t cmd[2] = {0xFE, 0x4B};
     sendRaw(cmd, sizeof(cmd));
-    usleep(100);
 }
 
 void NHD0420D3Z_UARTAdapter::clearBlinker() {
     blinkerEnabled = false;
     uint8_t cmd[2] = {0xFE, 0x4C};
     sendRaw(cmd, sizeof(cmd));
-    usleep(100);
 }

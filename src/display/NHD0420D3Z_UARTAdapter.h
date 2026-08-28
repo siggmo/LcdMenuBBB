@@ -2,6 +2,7 @@
 
 #include "CharacterDisplayInterface.h"
 #include <string>
+#include <vector>
 #include <stdint.h>
 #include <termios.h>
 
@@ -11,7 +12,8 @@
  *
  * Implements CharacterDisplayInterface using POSIX serial port communications (termios).
  * Supports configurable serial port paths (default: "/dev/ttyS3"), baud rates (default: 9600 baud, 8N1),
- * custom character creation (CGRAM 0-7), backlight brightness control, and cursor positioning.
+ * differential shadow buffering to eliminate redundant serial writes, custom character creation,
+ * backlight brightness control, and cursor positioning.
  */
 class NHD0420D3Z_UARTAdapter : public CharacterDisplayInterface {
   private:
@@ -22,6 +24,12 @@ class NHD0420D3Z_UARTAdapter : public CharacterDisplayInterface {
     int fd;
     bool backlightEnabled;
     bool blinkerEnabled;
+
+    std::vector<std::string> shadowBuffer;
+    uint8_t physicalCursorCol;
+    uint8_t physicalCursorRow;
+    uint8_t logicalCursorCol;
+    uint8_t logicalCursorRow;
 
     bool openPort();
     void closePort();
