@@ -52,7 +52,8 @@ class WidgetBool : public BaseWidgetValue<V> {
      * @return true if command was handled, false otherwise
      */
     bool process(LcdMenu* menu, const unsigned char command) override {
-        if (command == UP || command == DOWN) {
+        (void)menu;
+        if (command == UP || command == DOWN || command == LEFT || command == RIGHT) {
             bool current = static_cast<bool>(this->value);
             this->value = !current;
             LOG(F("WidgetToggle::toggle"), static_cast<bool>(this->value));

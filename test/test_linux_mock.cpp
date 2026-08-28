@@ -1,4 +1,5 @@
 #include <ItemBack.h>
+#include <ItemBool.h>
 #include <ItemCommand.h>
 #include <ItemInput.h>
 #include <ItemList.h>
@@ -336,22 +337,69 @@ void test_list_item() {
     menu.process(ENTER);
     TEST_ASSERT(MenuItem::isEditing() == true, "ItemList entered edit mode");
 
-    // Advance to next option ("AUTO")
-    menu.process(UP);
-    TEST_ASSERT(display.getRow(0).find("AUTO") != std::string::npos, "ItemList switched to 'AUTO'");
+    // Advance to next option via RIGHT (rotary clockwise in edit mode)
+    menu.process(RIGHT);
+    TEST_ASSERT(display.getRow(0).find("AUTO") != std::string::npos, "ItemList switched to 'AUTO' on RIGHT");
 
     // Commit selection
     menu.process(ENTER);
     TEST_ASSERT(MenuItem::isEditing() == false, "ItemList exited edit mode on 2nd ENTER");
     TEST_ASSERT(listCallbackIndex == 1, "Callback received index 1 ('AUTO')");
 
-    // Re-enter edit mode and cancel/discard with BACK
+    // Re-enter edit mode and advance via UP
     menu.process(ENTER);
     menu.process(UP);  // "BOOST" (index 2)
-    TEST_ASSERT(display.getRow(0).find("BOOST") != std::string::npos, "ItemList switched to 'BOOST'");
+    TEST_ASSERT(display.getRow(0).find("BOOST") != std::string::npos, "ItemList switched to 'BOOST' on UP");
+
+    // Go back via LEFT (rotary counter-clockwise in edit mode)
+    menu.process(LEFT);
+    TEST_ASSERT(display.getRow(0).find("AUTO") != std::string::npos, "ItemList switched back to 'AUTO' on LEFT");
+
+    // Discard with BACK
     menu.process(BACK);  // Discard
     TEST_ASSERT(MenuItem::isEditing() == false, "ItemList exited edit mode on BACK (ESC)");
     TEST_ASSERT(display.getRow(0).find("AUTO") != std::string::npos, "ItemList reverted back to 'AUTO'");
+}
+
+static bool boolCallbackState = false;
+void onBoolTest(const bool state) {
+    boolCallbackState = state;
+}
+
+void test_bool_item() {
+    std::cout << "\n[TEST] test_bool_item\n";
+    MockCharacterDisplayAdapter display(20, 4, false);
+    CharacterDisplayRenderer renderer(&display, 20, 4);
+    LcdMenu menu(renderer);
+
+    bool pump = false;
+    boolCallbackState = false;
+    MenuScreen mainScreen({
+        ITEM_BOOL("Pump", pump, "ON", "OFF", onBoolTest),
+    });
+
+    renderer.begin();
+    menu.setScreen(&mainScreen);
+
+    TEST_ASSERT(display.getRow(0).find("OFF") != std::string::npos, "Initial bool item is 'OFF'");
+
+    // Enter edit mode
+    menu.process(ENTER);
+    TEST_ASSERT(MenuItem::isEditing() == true, "ItemBool entered edit mode on 1st ENTER");
+
+    // Toggle via RIGHT (rotary knob in edit mode)
+    menu.process(RIGHT);
+    TEST_ASSERT(display.getRow(0).find("ON") != std::string::npos, "ItemBool switched to 'ON' on RIGHT");
+
+    // Toggle via LEFT
+    menu.process(LEFT);
+    TEST_ASSERT(display.getRow(0).find("OFF") != std::string::npos, "ItemBool switched to 'OFF' on LEFT");
+
+    // Toggle back to ON and commit on 2nd ENTER
+    menu.process(RIGHT);
+    menu.process(ENTER);
+    TEST_ASSERT(MenuItem::isEditing() == false, "ItemBool exited edit mode on 2nd ENTER");
+    TEST_ASSERT(boolCallbackState == true, "Callback received true");
 }
 
 int main() {
@@ -365,6 +413,7 @@ int main() {
     test_range_item();
     test_range_item_cancel_discards_value();
     test_list_item();
+    test_bool_item();
     test_submenu_and_back();
     test_input_item_commit_and_cancel();
     test_mock_file_dump();

@@ -45,13 +45,16 @@ class WidgetList : public BaseWidgetValue<V> {
      * - `DOWN` - decrement value and trigger callback;
      */
     bool process(LcdMenu* menu, const unsigned char command) override {
+        (void)menu;
         switch (command) {
             case UP:
+            case RIGHT:
                 if (nextValue()) {
                     updateValue(F("WidgetList::nextValue"));
                 }
                 return true;
             case DOWN:
+            case LEFT:
                 if (previousValue()) {
                     updateValue(F("WidgetList::previousValue"));
                 }
