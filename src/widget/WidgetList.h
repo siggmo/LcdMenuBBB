@@ -67,6 +67,7 @@ class WidgetList : public BaseWidgetValue<V> {
     bool isList() const override { return true; }
 
     void updateValue(const char* action) {
+        (void)action;
         BaseWidgetValue<V>::handleChange();
         LOG(action, (uint8_t)this->value);
     }
