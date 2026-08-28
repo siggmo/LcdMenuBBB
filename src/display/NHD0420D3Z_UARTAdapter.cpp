@@ -17,6 +17,7 @@ NHD0420D3Z_UARTAdapter::NHD0420D3Z_UARTAdapter(
       fd(-1),
       backlightEnabled(true),
       blinkerEnabled(false),
+      displayVisible(true),
       logicalCursorCol(0),
       logicalCursorRow(0) {
     lineBuffer.resize(maxRows, std::string(maxCols, ' '));
@@ -118,13 +119,22 @@ void NHD0420D3Z_UARTAdapter::clear() {
 }
 
 void NHD0420D3Z_UARTAdapter::show() {
-    uint8_t cmd[2] = {0xFE, 0x41};
-    sendRaw(cmd, sizeof(cmd));
+    if (!displayVisible) {
+        displayVisible = true;
+        uint8_t cmd[2] = {0xFE, 0x41};
+        sendRaw(cmd, sizeof(cmd));
+        if (blinkerEnabled) {
+            drawBlinker();
+        }
+    }
 }
 
 void NHD0420D3Z_UARTAdapter::hide() {
-    uint8_t cmd[2] = {0xFE, 0x42};
-    sendRaw(cmd, sizeof(cmd));
+    if (displayVisible) {
+        displayVisible = false;
+        uint8_t cmd[2] = {0xFE, 0x42};
+        sendRaw(cmd, sizeof(cmd));
+    }
 }
 
 void NHD0420D3Z_UARTAdapter::flushRow(uint8_t r) {

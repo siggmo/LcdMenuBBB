@@ -24,6 +24,7 @@ class NHD0420D3Z_UARTAdapter : public CharacterDisplayInterface {
     int fd;
     bool backlightEnabled;
     bool blinkerEnabled;
+    bool displayVisible;
 
     std::vector<std::string> lineBuffer;
     std::vector<std::string> shadowBuffer;
