@@ -126,9 +126,9 @@ class LcdMenu {
      *        for example, when a value bound to an item changes, the menu needs to be updated.
      *        This method should be called in the `loop` function of the sketch.
      *
-     * @param pollInterval the interval to update the menu in milliseconds (default is 1000)
+     * @param pollInterval the interval to update the menu in milliseconds (default is 50)
      */
-    void poll(uint16_t pollInterval = 1000);
+    void poll(uint16_t pollInterval = 50);
     /**
      * @brief Get the current status of the menu, enabled / disabled
      * @return the value of private var 'enabled'

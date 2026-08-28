@@ -410,8 +410,8 @@ void test_item_value_auto_scroll() {
 
     char longStationName[64] = "Station-Alpha-Central-Hub-01";
     MenuScreen mainScreen({
-        ITEM_VALUE("TagAuto", longStationName, "%s", true, 10), // Row 0: autoScroll = true
-        ITEM_VALUE("TagStatic", longStationName, "%s", false, 10), // Row 1: autoScroll = false
+        ITEM_VALUE("TagAuto", longStationName, "%s", true, 10, '>'),    // Row 0: autoScroll = true
+        ITEM_VALUE("TagStatic", longStationName, "%s", false, 10, '>'),  // Row 1: autoScroll = false
     });
 
     renderer.begin();
@@ -422,6 +422,8 @@ void test_item_value_auto_scroll() {
     std::string initialRow0 = display.getRow(0);
     std::string initialRow1 = display.getRow(1);
     TEST_ASSERT(initialRow0.find("Station") != std::string::npos, "Initial draw displays start of long value");
+    // Row 1 is unfocused and long, so it should display the overflow indicator '>' at the end of available space
+    TEST_ASSERT(initialRow1.find(">") != std::string::npos, "Unfocused overflowing item displays '>' indicator");
 
     // Row 1 (unfocused) does not scroll
     for (int i = 0; i < 20; i++) {
@@ -438,17 +440,18 @@ void test_item_value_auto_scroll() {
     menu.process(DOWN);
     TEST_ASSERT(menu.getCursor() == 1, "Cursor moved to row 1");
 
-    // Row 0 should immediately reset back to start upon losing focus
+    // Row 0 should immediately reset back to start and show '>' indicator upon losing focus
     std::string row0AfterLeave = display.getRow(0);
-    // Note: cursor character on row 0 changed from '>' to ' ', but value text reset to 'Station'
     TEST_ASSERT(row0AfterLeave.find("Station") != std::string::npos, "Row 0 reset to start upon losing focus");
+    TEST_ASSERT(row0AfterLeave.find(">") != std::string::npos, "Row 0 displays '>' indicator when unfocused");
 
-    // Row 1 (now focused, but autoScroll=false) should stay static
+    // Row 1 (now focused, but autoScroll=false) should stay static with '>'
     for (int i = 0; i < 10; i++) {
         usleep(20000);
         menu.poll(10);
     }
-    TEST_ASSERT(display.getRow(1).find("Station") != std::string::npos, "Focused item with autoScroll=false stays static");
+    TEST_ASSERT(display.getRow(1).find("Statio") != std::string::npos, "Focused item with autoScroll=false stays static");
+    TEST_ASSERT(display.getRow(1).find(">") != std::string::npos, "Static item retains '>' indicator");
 }
 
 int main() {

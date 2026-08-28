@@ -23,6 +23,7 @@ class ItemValue : public BaseItemZeroWidget {
     const char* format;
     bool autoScroll;
     uint16_t scrollSpeedMs;
+    char overflowChar;
     uint16_t scrollOffset = 0;
     unsigned long lastScrollTime = 0;
     uint8_t holdCounter = 4;
@@ -34,12 +35,14 @@ class ItemValue : public BaseItemZeroWidget {
         T& value,
         const char* format = "%s",
         bool autoScroll = false,
-        uint16_t scrollSpeedMs = 120)
+        uint16_t scrollSpeedMs = 250,
+        char overflowChar = '>')
         : BaseItemZeroWidget(text),
           value(value),
           format(format),
           autoScroll(autoScroll),
-          scrollSpeedMs(scrollSpeedMs) {
+          scrollSpeedMs(scrollSpeedMs),
+          overflowChar(overflowChar) {
         this->polling = true;
     }
 
@@ -65,13 +68,24 @@ class ItemValue : public BaseItemZeroWidget {
         size_t valLen = strlen(buffer);
         bool focused = renderer ? renderer->isFocused() : false;
 
-        // Only scroll if autoScroll is enabled, item is currently focused, and value overflows
+        // When not scrolling (unfocused, autoScroll disabled, or value fits completely):
         if (!autoScroll || !focused || availWidth == 0 || valLen <= availWidth) {
             if (!focused) {
                 scrollOffset = 0;
                 holdCounter = 4;
             }
-            renderer->drawItem(text, buffer);
+            // If value overflows available space and is not in focus, show overflow indicator
+            if (valLen > availWidth && availWidth > 1) {
+                char previewSlice[ITEM_DRAW_BUFFER_SIZE];
+                for (uint8_t i = 0; i < availWidth - 1; i++) {
+                    previewSlice[i] = buffer[i];
+                }
+                previewSlice[availWidth - 1] = overflowChar;
+                previewSlice[availWidth] = '\0';
+                renderer->drawItem(text, previewSlice);
+            } else {
+                renderer->drawItem(text, buffer);
+            }
             return;
         }
 
@@ -124,7 +138,8 @@ class ItemValue : public BaseItemZeroWidget {
  * @param value the value to display
  * @param format the format string to use when displaying the value
  * @param autoScroll if true, auto-scrolls horizontally when the cursor focuses on this item and value overflows
- * @param scrollSpeedMs ticker scroll speed in milliseconds per step (default 120ms)
+ * @param scrollSpeedMs ticker scroll speed in milliseconds per step (default 250ms)
+ * @param overflowChar indicator character shown at end of value when unfocused and truncated (default '>')
  * @return MenuItem* the created item
  */
 template <typename T>
@@ -133,6 +148,7 @@ inline MenuItem* ITEM_VALUE(
     T& value,
     const char* format = "%s",
     bool autoScroll = false,
-    uint16_t scrollSpeedMs = 120) {
-    return new ItemValue<T>(text, value, format, autoScroll, scrollSpeedMs);
+    uint16_t scrollSpeedMs = 250,
+    char overflowChar = '>') {
+    return new ItemValue<T>(text, value, format, autoScroll, scrollSpeedMs, overflowChar);
 }
