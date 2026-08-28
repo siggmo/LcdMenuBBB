@@ -402,6 +402,34 @@ void test_bool_item() {
     TEST_ASSERT(boolCallbackState == true, "Callback received true");
 }
 
+void test_item_value_auto_scroll() {
+    std::cout << "\n[TEST] test_item_value_auto_scroll\n";
+    MockCharacterDisplayAdapter display(20, 4, false);
+    CharacterDisplayRenderer renderer(&display, 20, 4);
+    LcdMenu menu(renderer);
+
+    char longStationName[64] = "Station-Alpha-Central-Hub-01";
+    MenuScreen mainScreen({
+        ITEM_VALUE("Tag", longStationName, "%s", 10),
+    });
+
+    renderer.begin();
+    menu.setScreen(&mainScreen);
+
+    // Initial draw: row 0 starts with 'Station'
+    std::string initialRow = display.getRow(0);
+    TEST_ASSERT(initialRow.find("Station") != std::string::npos, "Initial draw displays start of long value");
+
+    // Advance ticks to trigger marquee scroll past initial hold
+    for (int i = 0; i < 20; i++) {
+        usleep(20000);  // 20ms > 10ms scrollSpeedMs
+        menu.poll(10);
+    }
+
+    std::string scrolledRow = display.getRow(0);
+    TEST_ASSERT(scrolledRow != initialRow, "Row updated during marquee auto-scroll");
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "Running LcdMenu Linux Unit Tests\n";
@@ -414,6 +442,7 @@ int main() {
     test_range_item_cancel_discards_value();
     test_list_item();
     test_bool_item();
+    test_item_value_auto_scroll();
     test_submenu_and_back();
     test_input_item_commit_and_cancel();
     test_mock_file_dump();

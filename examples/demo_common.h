@@ -21,7 +21,7 @@ static int lcdBrightness = 8;
 static int fanSpeed = 65;
 static bool pumpActive = true;
 static int uptimeSec = 0;
-static char unitTag[32] = "BBB-Node-1";
+static char unitTag[64] = "BBB-PowerUnit-Station-Alpha-01";
 
 inline void onBrightnessChange(const int val) {
     std::cout << "[Event] LCD Brightness set to: " << val << "/8\n";

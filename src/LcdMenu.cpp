@@ -96,7 +96,7 @@ void LcdMenu::poll(uint16_t pollInterval) {
     if (!enabled || pollInterval == 0) {
         return;
     }
-    bool redrawn = screen->poll(&renderer, pollInterval < 100 ? 100 : pollInterval);
+    bool redrawn = screen->poll(&renderer, pollInterval);
     if (redrawn) {
         FrameLifecycleRenderer* frame = frameLifecycle(renderer);
         if (frame != NULL) {
