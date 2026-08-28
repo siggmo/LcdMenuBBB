@@ -40,7 +40,7 @@ int main(int argc, char* argv[]) {
     LcdMenu menu(renderer);
 
     // 2. Initialize BeagleBone Black Rotary Encoder (eqep1) & Push Button (rotary_btn)
-    LinuxRotaryInputAdapter rotaryInput(&menu, "", "", 1, false);
+    LinuxRotaryInputAdapter rotaryInput(&menu, "", "", 2, false);
 
     // 3. Define Submenu: Display Settings
     MenuScreen displaySettingsScreen({

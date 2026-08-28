@@ -53,7 +53,7 @@ class LinuxRotaryInputAdapter : public InputInterface {
      * @param menu Pointer to LcdMenu instance.
      * @param counterPath Path to counter count file (empty to auto-detect eQEP).
      * @param evdevPath Path to gpio-keys event device (empty to auto-detect gpio-keys).
-     * @param countsPerStep Number of quadrature encoder ticks per detent/step (default 1).
+     * @param countsPerStep Number of quadrature counter ticks per physical detent/step (divider, default 2).
      * @param reverseDirection Reverse rotation direction mapping if true.
      * @param longPressMs Milliseconds required to trigger a long press (BACK). Default 500ms.
      */
@@ -61,7 +61,7 @@ class LinuxRotaryInputAdapter : public InputInterface {
         LcdMenu* menu,
         const std::string& counterPath = "",
         const std::string& evdevPath = "",
-        int countsPerStep = 1,
+        int countsPerStep = 2,
         bool reverseDirection = false,
         int longPressMs = 500);
 
@@ -71,6 +71,9 @@ class LinuxRotaryInputAdapter : public InputInterface {
     void observe() override;
 
     void setCountsPerStep(int steps) { countsPerStep = steps > 0 ? steps : 1; }
+    void setDivider(int divider) { setCountsPerStep(divider); }
+    int getCountsPerStep() const { return countsPerStep; }
+    int getDivider() const { return countsPerStep; }
     void setReverseDirection(bool reverse) { reverseDirection = reverse; }
     void setLongPressMs(int ms) { longPressMs = ms > 0 ? ms : 500; }
     int getLongPressMs() const { return longPressMs; }
