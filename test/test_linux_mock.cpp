@@ -132,9 +132,37 @@ void test_range_item() {
     menu.process(LEFT);
     TEST_ASSERT(display.getRow(0).find("50") != std::string::npos, "Range decremented back to 50");
 
-    // Commit edit
+    // Commit edit (2nd ENTER)
     menu.process(ENTER);
-    TEST_ASSERT(MenuItem::isEditing() == false, "Committed edit mode");
+    TEST_ASSERT(MenuItem::isEditing() == false, "Committed edit mode on 2nd ENTER");
+}
+
+void test_range_item_cancel_discards_value() {
+    std::cout << "\n[TEST] test_range_item_cancel_discards_value\n";
+    MockCharacterDisplayAdapter display(20, 4, false);
+    CharacterDisplayRenderer renderer(&display, 20, 4);
+    LcdMenu menu(renderer);
+
+    int volume = 50;
+    MenuScreen mainScreen({
+        ITEM_RANGE("Volume", volume, 10, 0, 100),
+    });
+
+    renderer.begin();
+    menu.setScreen(&mainScreen);
+
+    // Enter edit mode
+    menu.process(ENTER);
+    TEST_ASSERT(MenuItem::isEditing() == true, "Entered edit mode");
+
+    // Increment to 60
+    menu.process(RIGHT);
+    TEST_ASSERT(display.getRow(0).find("60") != std::string::npos, "Range incremented to 60");
+
+    // Cancel edit mode with BACK (ESC)
+    menu.process(BACK);
+    TEST_ASSERT(MenuItem::isEditing() == false, "Exited edit mode on BACK (ESC)");
+    TEST_ASSERT(display.getRow(0).find("50") != std::string::npos, "Range reverted back to original 50 on cancel");
 }
 
 void test_submenu_and_back() {
@@ -176,16 +204,16 @@ void onInputTest(char* val) {
     }
 }
 
-void test_input_item() {
-    std::cout << "\n[TEST] test_input_item\n";
+void test_input_item_commit_and_cancel() {
+    std::cout << "\n[TEST] test_input_item_commit_and_cancel\n";
     MockCharacterDisplayAdapter display(20, 4, false);
     CharacterDisplayRenderer renderer(&display, 20, 4);
     LcdMenu menu(renderer);
 
-    char name[16] = "Test";
     inputCallbackBuffer[0] = '\0';
+    ItemInput* itemInput = new ItemInput("Name", (char*)"Test", onInputTest);
     MenuScreen mainScreen({
-        ITEM_INPUT("Name", name, onInputTest),
+        itemInput,
     });
 
     renderer.begin();
@@ -193,18 +221,29 @@ void test_input_item() {
 
     TEST_ASSERT(display.getRow(0).find("Test") != std::string::npos, "Initial input text is 'Test'");
 
-    // Enter edit mode
+    // 1. Test Commit with 2nd ENTER
     menu.process(ENTER);
-    TEST_ASSERT(MenuItem::isEditing() == true, "ItemInput in edit mode");
+    TEST_ASSERT(MenuItem::isEditing() == true, "ItemInput entered edit mode on 1st ENTER");
 
-    // Type character '1'
     menu.process('1');
     TEST_ASSERT(display.getRow(0).find("Test1") != std::string::npos, "Typed '1', text is 'Test1'");
 
-    // Exit edit mode (BACK key commits/exits edit mode for ItemInput)
-    menu.process(BACK);
-    TEST_ASSERT(MenuItem::isEditing() == false, "ItemInput exited edit mode");
+    menu.process(ENTER);
+    TEST_ASSERT(MenuItem::isEditing() == false, "ItemInput exited edit mode on 2nd ENTER");
     TEST_ASSERT(std::string(inputCallbackBuffer) == "Test1", "Callback received committed text 'Test1'");
+    TEST_ASSERT(std::string(itemInput->getValue()) == "Test1", "ItemInput getValue() holds 'Test1'");
+
+    // 2. Test Discard with BACK (ESC)
+    menu.process(ENTER);
+    TEST_ASSERT(MenuItem::isEditing() == true, "ItemInput re-entered edit mode on ENTER");
+
+    menu.process('X');
+    TEST_ASSERT(display.getRow(0).find("Test1X") != std::string::npos, "Typed 'X', text is 'Test1X'");
+
+    menu.process(BACK);  // ESC / Cancel
+    TEST_ASSERT(MenuItem::isEditing() == false, "ItemInput exited edit mode on BACK (ESC)");
+    TEST_ASSERT(display.getRow(0).find("Test1") != std::string::npos, "Display text reverted back to 'Test1' on discard");
+    TEST_ASSERT(std::string(itemInput->getValue()) == "Test1", "ItemInput getValue() reverted back to 'Test1'");
 }
 
 void test_mock_file_dump() {
@@ -235,8 +274,9 @@ int main() {
     test_cursor_navigation_down_up();
     test_toggle_item();
     test_range_item();
+    test_range_item_cancel_discards_value();
     test_submenu_and_back();
-    test_input_item();
+    test_input_item_commit_and_cancel();
     test_mock_file_dump();
 
     std::cout << "\n========================================\n";

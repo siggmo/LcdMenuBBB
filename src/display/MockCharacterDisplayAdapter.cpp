@@ -18,6 +18,7 @@ MockCharacterDisplayAdapter::MockCharacterDisplayAdapter(
       displayVisible(true),
       ansiTuiEnabled(ansiTuiEnabled),
       clearScreenOnRender(true),
+      dirty(true),
       dumpFilePath(dumpFilePath) {
     buffer.resize(maxRows, std::string(maxCols, ' '));
     for (auto& slot : customChars) {
@@ -37,16 +38,19 @@ void MockCharacterDisplayAdapter::clear() {
     }
     cursorCol = 0;
     cursorRow = 0;
+    dirty = true;
     render();
 }
 
 void MockCharacterDisplayAdapter::show() {
     displayVisible = true;
+    dirty = true;
     render();
 }
 
 void MockCharacterDisplayAdapter::hide() {
     displayVisible = false;
+    dirty = true;
     render();
 }
 
@@ -58,7 +62,10 @@ void MockCharacterDisplayAdapter::draw(uint8_t byte) {
         } else {
             ch = static_cast<char>(byte);
         }
-        buffer[cursorRow][cursorCol] = ch;
+        if (buffer[cursorRow][cursorCol] != ch) {
+            buffer[cursorRow][cursorCol] = ch;
+            dirty = true;
+        }
         cursorCol++;
         if (cursorCol >= maxCols) {
             cursorCol = 0;
@@ -72,7 +79,7 @@ void MockCharacterDisplayAdapter::draw(const char* text) {
     while (*text) {
         draw(static_cast<uint8_t>(*text++));
     }
-    render();
+    renderIfDirty();
 }
 
 void MockCharacterDisplayAdapter::setCursor(uint8_t col, uint8_t row) {
@@ -82,6 +89,7 @@ void MockCharacterDisplayAdapter::setCursor(uint8_t col, uint8_t row) {
 
 void MockCharacterDisplayAdapter::setBacklight(bool enabled) {
     backlightEnabled = enabled;
+    dirty = true;
     render();
 }
 
@@ -95,11 +103,13 @@ void MockCharacterDisplayAdapter::createChar(uint8_t id, uint8_t* c) {
 
 void MockCharacterDisplayAdapter::drawBlinker() {
     blinkerEnabled = true;
+    dirty = true;
     render();
 }
 
 void MockCharacterDisplayAdapter::clearBlinker() {
     blinkerEnabled = false;
+    dirty = true;
     render();
 }
 
@@ -173,7 +183,14 @@ void MockCharacterDisplayAdapter::dumpToFile(const std::string& filepath) const 
     }
 }
 
+void MockCharacterDisplayAdapter::renderIfDirty() {
+    if (dirty) {
+        render();
+    }
+}
+
 void MockCharacterDisplayAdapter::render() {
+    dirty = false;
     if (ansiTuiEnabled) {
         if (clearScreenOnRender) {
             // ANSI clear screen & home cursor

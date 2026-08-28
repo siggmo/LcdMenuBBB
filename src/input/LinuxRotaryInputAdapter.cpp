@@ -15,7 +15,8 @@ LinuxRotaryInputAdapter::LinuxRotaryInputAdapter(
     const std::string& counterPath,
     const std::string& evdevPath,
     int countsPerStep,
-    bool reverseDirection)
+    bool reverseDirection,
+    int longPressMs)
     : InputInterface(menu),
       counterPath(counterPath),
       evdevPath(evdevPath),
@@ -25,7 +26,10 @@ LinuxRotaryInputAdapter::LinuxRotaryInputAdapter(
       countsPerStep(countsPerStep > 0 ? countsPerStep : 1),
       reverseDirection(reverseDirection),
       accumulatedCounts(0),
-      initialized(false) {}
+      initialized(false),
+      longPressMs(longPressMs > 0 ? longPressMs : 500),
+      buttonPressed(false),
+      longPressTriggered(false) {}
 
 LinuxRotaryInputAdapter::~LinuxRotaryInputAdapter() {
     closeDescriptors();
@@ -221,12 +225,22 @@ void LinuxRotaryInputAdapter::processEvents() {
     struct input_event ev;
     while (read(evdevFd, &ev, sizeof(ev)) == sizeof(ev)) {
         if (ev.type == EV_KEY) {
-            if (ev.value == 1 || ev.value == 2) {  // Press or repeat
-                if (ev.code == KEY_ENTER) {        // rotary_btn
-                    menu->process(ENTER);
+            if (ev.code == KEY_ENTER) {  // rotary_btn
+                auto now = std::chrono::steady_clock::now();
+                if (ev.value == 1) {  // Key Down
+                    buttonPressed = true;
+                    longPressTriggered = false;
+                    pressStartTime = now;
+                } else if (ev.value == 0) {  // Key Up
+                    if (buttonPressed) {
+                        buttonPressed = false;
+                        if (!longPressTriggered) {
+                            menu->process(ENTER);  // Short press -> ENTER
+                        }
+                    }
                 }
-                // Note: KEY_PROG1 (boot_btn) is intentionally ignored as requested.
             }
+            // Note: KEY_PROG1 (boot_btn) is intentionally ignored as requested.
         }
     }
 }
@@ -237,4 +251,13 @@ void LinuxRotaryInputAdapter::observe() {
     }
     processEncoder();
     processEvents();
+
+    if (buttonPressed && !longPressTriggered && menu != nullptr) {
+        auto now = std::chrono::steady_clock::now();
+        int elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - pressStartTime).count();
+        if (elapsedMs >= longPressMs) {
+            longPressTriggered = true;
+            menu->process(BACK);  // Long press -> BACK (ESC / Cancel)
+        }
+    }
 }

@@ -4,6 +4,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdio.h>
 
 /**
@@ -40,6 +41,18 @@ class PosixTerminalInputAdapter : public InputInterface {
         }
     }
 
+    bool readWithTimeout(char& out, int timeoutMs = 25) {
+        struct pollfd pfd;
+        pfd.fd = STDIN_FILENO;
+        pfd.events = POLLIN;
+        pfd.revents = 0;
+        int res = poll(&pfd, 1, timeoutMs);
+        if (res > 0 && (pfd.revents & POLLIN)) {
+            return read(STDIN_FILENO, &out, 1) > 0;
+        }
+        return false;
+    }
+
   public:
     PosixTerminalInputAdapter(LcdMenu* menu) : InputInterface(menu) {
         enableRawMode();
@@ -59,14 +72,14 @@ class PosixTerminalInputAdapter : public InputInterface {
             return;
         }
 
-        if (c == 27) {  // ESC sequence
-            char seq[3];
-            if (read(STDIN_FILENO, &seq[0], 1) <= 0) {
-                // Lone ESC key
+        if (c == 27) {  // ESC key or start of ANSI escape sequence
+            char seq[2];
+            if (!readWithTimeout(seq[0], 25)) {
+                // Standalone ESC key pressed (Back / Cancel / Discard)
                 menu->process(BACK);
                 return;
             }
-            if (read(STDIN_FILENO, &seq[1], 1) <= 0) {
+            if (!readWithTimeout(seq[1], 25)) {
                 return;
             }
 
@@ -76,10 +89,10 @@ class PosixTerminalInputAdapter : public InputInterface {
                     case 'B': menu->process(DOWN); break;
                     case 'C': menu->process(RIGHT); break;
                     case 'D': menu->process(LEFT); break;
-                    case '3':  // Delete key (~ follows)
+                    case '3':  // Delete key (\033[3~)
                         {
                             char t;
-                            if (read(STDIN_FILENO, &t, 1) > 0 && t == '~') {
+                            if (readWithTimeout(t, 25) && t == '~') {
                                 menu->process(CLEAR);
                             }
                         }

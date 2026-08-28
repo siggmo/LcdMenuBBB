@@ -10,6 +10,7 @@
 
 #include <string.h>
 #include <cctype>
+#include <string>
 
 /**
  * @brief Item that allows user to input string information.
@@ -31,6 +32,7 @@ class ItemInput : public MenuItem, public GraphicalMenuItem {
      */
     char* value;
     bool ownsValue;
+    std::string originalValue;
     /**
      * @brief The index of first visible character.
      *
@@ -244,10 +246,10 @@ class ItemInput : public MenuItem, public GraphicalMenuItem {
             }
             switch (command) {
                 case ENTER:
-                    enter(renderer);
+                    commit(renderer);
                     return true;
                 case BACK:
-                    back(renderer);
+                    cancel(renderer);
                     return true;
                 case UP:
                     return true;
@@ -281,6 +283,9 @@ class ItemInput : public MenuItem, public GraphicalMenuItem {
     void enter(MenuRenderer* renderer) {
         bool graphicalSelection = getGraphicalValueSelectionRenderer(renderer) != NULL;
 
+        // Save original value to restore on cancel/discard
+        originalValue = (value != NULL) ? value : "";
+
         // Move cursor to the latest editable index
         uint8_t length = strlen(value);
         if (graphicalSelection && length > 0) {
@@ -312,7 +317,7 @@ class ItemInput : public MenuItem, public GraphicalMenuItem {
         // Log
         LOG(F("ItemInput::enterEditMode"), value);
     };
-    void back(MenuRenderer* renderer) {
+    void commit(MenuRenderer* renderer) {
         renderer->clearBlinker();
         MenuItem::endEdit();
 
@@ -328,7 +333,29 @@ class ItemInput : public MenuItem, public GraphicalMenuItem {
         draw(renderer);
 
         // Log
-        LOG(F("ItemInput::exitEditMode"), value);
+        LOG(F("ItemInput::commitEditMode"), value);
+    };
+    void cancel(MenuRenderer* renderer) {
+        renderer->clearBlinker();
+        MenuItem::endEdit();
+
+        renderer->viewShift = 0;
+
+        // Revert value to original
+        if (value != NULL) {
+            strcpy(value, originalValue.c_str());
+        }
+
+        // Move view to 0 and redraw before exit
+        cursor = 0;
+        view = 0;
+        draw(renderer);
+
+        // Log
+        LOG(F("ItemInput::cancelEditMode"), value);
+    };
+    void back(MenuRenderer* renderer) {
+        commit(renderer);
     };
     void left(MenuRenderer* renderer) {
         if (cursor == 0) {

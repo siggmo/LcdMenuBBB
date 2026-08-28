@@ -26,6 +26,7 @@ class MockCharacterDisplayAdapter : public CharacterDisplayInterface {
     bool displayVisible;
     bool ansiTuiEnabled;
     bool clearScreenOnRender;
+    bool dirty;
     std::string dumpFilePath;
 
     std::vector<std::string> buffer;
@@ -66,6 +67,8 @@ class MockCharacterDisplayAdapter : public CharacterDisplayInterface {
     void setDumpFile(const std::string& filepath);
     void setCustomCharSymbol(uint8_t id, char symbol);
     void render();
+    void renderIfDirty();
+    bool isDirty() const { return dirty; }
 
     // Inspection & Testing API
     std::string getRow(uint8_t row) const;

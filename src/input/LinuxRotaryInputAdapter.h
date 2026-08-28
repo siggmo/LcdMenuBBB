@@ -3,6 +3,7 @@
 #include "InputInterface.h"
 #include <string>
 #include <stdint.h>
+#include <chrono>
 
 /**
  * @class LinuxRotaryInputAdapter
@@ -15,7 +16,9 @@
  * - When browsing menu: Clockwise = DOWN, Counter-Clockwise = UP.
  * - When editing item value: Clockwise = RIGHT (increment), Counter-Clockwise = LEFT (decrement).
  *
- * Rotary push button (KEY_ENTER) emits ENTER.
+ * Rotary push button (KEY_ENTER):
+ * - Short press (< longPressMs, default 500ms): emits ENTER.
+ * - Long press (>= longPressMs): emits BACK (cancel/discard or exit submenu).
  * Boot button (KEY_PROG1) is explicitly ignored.
  */
 class LinuxRotaryInputAdapter : public InputInterface {
@@ -29,6 +32,11 @@ class LinuxRotaryInputAdapter : public InputInterface {
     bool reverseDirection;
     int accumulatedCounts;
     bool initialized;
+
+    int longPressMs;
+    bool buttonPressed;
+    bool longPressTriggered;
+    std::chrono::steady_clock::time_point pressStartTime;
 
     bool autoDetectCounterPath();
     bool autoDetectEvdevPath();
@@ -47,13 +55,15 @@ class LinuxRotaryInputAdapter : public InputInterface {
      * @param evdevPath Path to gpio-keys event device (empty to auto-detect gpio-keys).
      * @param countsPerStep Number of quadrature encoder ticks per detent/step (default 1).
      * @param reverseDirection Reverse rotation direction mapping if true.
+     * @param longPressMs Milliseconds required to trigger a long press (BACK). Default 500ms.
      */
     LinuxRotaryInputAdapter(
         LcdMenu* menu,
         const std::string& counterPath = "",
         const std::string& evdevPath = "",
         int countsPerStep = 1,
-        bool reverseDirection = false);
+        bool reverseDirection = false,
+        int longPressMs = 500);
 
     virtual ~LinuxRotaryInputAdapter();
 
@@ -62,6 +72,8 @@ class LinuxRotaryInputAdapter : public InputInterface {
 
     void setCountsPerStep(int steps) { countsPerStep = steps > 0 ? steps : 1; }
     void setReverseDirection(bool reverse) { reverseDirection = reverse; }
+    void setLongPressMs(int ms) { longPressMs = ms > 0 ? ms : 500; }
+    int getLongPressMs() const { return longPressMs; }
 
     bool isCounterOpen() const { return counterFd >= 0; }
     bool isEvdevOpen() const { return evdevFd >= 0; }

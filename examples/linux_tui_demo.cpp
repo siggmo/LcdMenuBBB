@@ -66,7 +66,8 @@ int main() {
     while (!terminalInput.shouldQuit()) {
         terminalInput.observe();
         menu.poll();
-        usleep(20000);  // 20ms tick
+        display.renderIfDirty();
+        usleep(10000);  // 10ms tick for responsive UI
     }
 
     std::cout << "\nExited TUI Demo cleanly.\n";

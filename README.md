@@ -12,8 +12,10 @@ LcdMenu is a modular C++ library for creating menu systems on character LCDs and
   - Quadrature counter ticks read directly from Linux kernel `ti-eqep` driver via Counter Subsystem sysfs (`/sys/bus/counter/devices/counter*/count0/count`).
   - Button presses read from `gpio-keys` (`rotary_btn` / `KEY_ENTER`) via Linux `evdev`.
   - Context-aware rotation: navigation mode uses Up/Down; value editing mode uses Increment/Decrement.
-- **Mock Terminal Display & File Output**: Virtual 4x20 character grid with ANSI boxed Terminal User Interface (TUI) and continuous text file dumping for PC simulation and unit tests.
-- **Interactive Keyboard Input**: Non-blocking POSIX raw terminal keyboard reader for desktop testing.
+  - **Short Press (< 500ms)**: Emits `ENTER` to select/toggle or confirm & save in edit mode.
+  - **Long Press (>= 500ms)**: Emits `BACK` (ESC) to cancel & discard edits or return to parent menu.
+- **Mock Terminal Display & File Output**: Virtual 4x20 character grid with zero-lag ANSI boxed Terminal User Interface (TUI) and continuous text file dumping for PC simulation and unit tests.
+- **Interactive Keyboard Input**: Non-blocking POSIX raw terminal keyboard reader for desktop testing (`Enter` = Confirm, `Esc` = Cancel & Discard).
 
 ---
 
