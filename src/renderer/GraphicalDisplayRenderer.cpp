@@ -26,7 +26,7 @@ uint8_t safeLength(const char* text) {
     return len > 255 ? 255 : static_cast<uint8_t>(len);
 }
 
-void copyTextWindow(const char* text, uint8_t maxChars, char* out) {
+__attribute__((unused)) void copyTextWindow(const char* text, uint8_t maxChars, char* out) {
     if (text == NULL || maxChars == 0) {
         out[0] = '\0';
         return;

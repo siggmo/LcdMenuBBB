@@ -1,102 +1,170 @@
-<h1 align="center">
-  <picture>
-    <source srcset="docs/assets/logo-dark.png" media="(prefers-color-scheme: dark)">
-    <img src="docs/assets/logo-light.png" alt="LcdMenu Logo" height="56">
-  </picture></img><br>LcdMenu
-  </h1>
+# LcdMenu - BeagleBone Black (Linux C++)
 
-<p align="center">
-  <a href="https://www.ardu-badge.com/LcdMenu">
-    <img src="https://www.ardu-badge.com/badge/LcdMenu.svg" alt="Arduino Library Badge"/>
-  </a>
-  <a href="https://registry.platformio.org/libraries/forntoh/LcdMenu">
-    <img src="https://badges.registry.platformio.org/packages/forntoh/library/LcdMenu.svg" alt="PlatformIO Badge"/>
-  </a>
-  <img src="https://img.shields.io/github/check-runs/forntoh/LcdMenu/master?logo=githubactions&logoColor=%23ffffff" alt="Check Runs Badge"/>
-  <a href="https://lcdmenu.forntoh.dev">
-    <img src="https://img.shields.io/github/actions/workflow/status/forntoh/LcdMenu/docs.yml?label=docs&logo=google%20docs&logoColor=%23efefef" alt="Documentation Status Badge"/>
-  </a>
-  <a href="https://github.com/forntoh/LcdMenu/commits/master">
-    <img src="https://img.shields.io/github/commits-since/forntoh/LcdMenu/latest?color=yellow&logo=semanticrelease" alt="GitHub Commits Badge"/>
-  </a>
-</p>
-
-LcdMenu is an open-source Arduino library for creating menu systems on character LCDs and graphical/OLED displays. It is designed to be easy to use and flexible enough to support a wide range of use cases.
-
-With LcdMenu, you can create a menu system for your Arduino project with minimal effort. The library provides a simple API for creating menus and handling user input. There are also a number of built-in [display interfaces](https://lcdmenu.forntoh.dev/reference/api/display/index) and renderers to choose from, including classic character LCDs and graphical displays powered by `GraphicalDisplayRenderer` and U8g2 (for example SSD1306 and ST7920 modules).
-
-Graphical displays are first-class targets: use custom fonts and glyphs, highlighted rows and values, checkboxes and toggles, list/submenu indicators, scrollbars, and frame-buffered rendering where supported.
-
-<p align="center">
-  <img src="https://i.imgur.com/nViET8b.gif" alt="Example of a menu system created with LcdMenu">
-</p>
-
-<p align="center">
-  <img src="docs/source/images/home-graphical-display.gif" alt="Example of a menu system created with LcdMenu on a graphical display">
-</p>
-
-## Quick Start
-
-LcdMenu is a simple but powerful library for creating menu systems on embedded devices. It is designed to be easy to use and to work with a wide range of display interfaces and provide various helpers for handling user input like rotary encoders and buttons.
-
-### Installation
-
-Follow [this guide](https://www.ardu-badge.com/LcdMenu) to install the library with **Arduino Library Manager** or install it with **PlatformIO** using the steps below:
-
-1. Open the PlatformIO IDE or VSCode with PlatformIO extension installed.
-
-2. Create a new project or open an existing one.
-
-3. Add the LcdMenu library to your project by adding the following line to your `platformio.ini` file:
-
-   ```bash
-   lib_deps =
-       forntoh/LcdMenu@^5.0.0
-   ```
-
-4. Save the changes to the `platformio.ini` file.
-
-5. Build and upload your project to your device.
-
-### Usage
-
-To create a menu system with LcdMenu, you need to define a menu structure, a display interface, and an input method to interact with the menu. For this example, we will use the `LiquidCrystal_I2C` display interface and `KeyboardAdapter` for user input to read from the serial monitor. You can replace these with other display interfaces and input methods as needed or create your own.
-
-```cpp
-#include <LcdMenu.h>
-#include <MenuScreen.h>
-#include <display/LiquidCrystal_I2CAdapter.h>
-#include <renderer/CharacterDisplayRenderer.h>
-#include <input/KeyboardAdapter.h>
-
-MENU_SCREEN(mainScreen, mainItems,
-    ITEM_BASIC("Item 1"),
-    ITEM_BASIC("Item 2"),
-    ITEM_BASIC("Item 3"),
-    ITEM_BASIC("Item 4"));
-
-LiquidCrystal_I2C lcd(0x27, 16, 2);
-LiquidCrystal_I2CAdapter lcdAdapter(&lcd);
-CharacterDisplayRenderer renderer(&lcdAdapter, 16, 2);
-LcdMenu menu(renderer);
-KeyboardAdapter keyboard(&menu, &Serial);
-
-void setup() {
-    Serial.begin(9600);
-    renderer.begin();
-    menu.setScreen(mainScreen);
-}
-
-void loop() {
-    keyboard.observe();
-}
-```
-
-This example creates a simple menu with four items and displays it on a 16x2 LCD screen.
-The menu is controlled using the serial monitor, where you can navigate through the items using the arrow keys.
-
-For detailed information on how to use LcdMenu, check out the [official docs](https://lcdmenu.forntoh.dev)
+LcdMenu is a modular C++ library for creating menu systems on character LCDs and embedded user interfaces. This fork is ported to pure, standard modern Linux C++ (C++11/C++17) tailored for the **BeagleBone Black** (Linux 6.x / Debian) and generic POSIX systems.
 
 ---
 
-**Have a question/doubt? Check the [Discussions](https://github.com/forntoh/LcdMenu/discussions) tab, maybe your question has already been answered 😉**
+## Features & Hardware Support
+
+- **Pure Linux C++ Core**: No Arduino or PlatformIO dependencies; uses standard C++11 (`std::chrono`, standard STL containers, POSIX APIs).
+- **Newhaven UART LCD Support**: Native driver for `NHD-0420D3Z-NSW-BBW-V3` 4x20 character displays over serial UART (`/dev/ttyS3` default at 9600 baud, 8N1).
+- **BeagleBone Black Rotary & Button Input**:
+  - Quadrature counter ticks read directly from Linux kernel `ti-eqep` driver via Counter Subsystem sysfs (`/sys/bus/counter/devices/counter*/count0/count`).
+  - Button presses read from `gpio-keys` (`rotary_btn` / `KEY_ENTER`) via Linux `evdev`.
+  - Context-aware rotation: navigation mode uses Up/Down; value editing mode uses Increment/Decrement.
+- **Mock Terminal Display & File Output**: Virtual 4x20 character grid with ANSI boxed Terminal User Interface (TUI) and continuous text file dumping for PC simulation and unit tests.
+- **Interactive Keyboard Input**: Non-blocking POSIX raw terminal keyboard reader for desktop testing.
+
+---
+
+## Quick Start
+
+### Minimal Example (`examples/simple_menu.cpp`)
+
+```cpp
+#include <ItemBack.h>
+#include <ItemCommand.h>
+#include <ItemSubMenu.h>
+#include <ItemToggle.h>
+#include <LcdMenu.h>
+#include <display/MockCharacterDisplayAdapter.h>
+#include <renderer/CharacterDisplayRenderer.h>
+#include <iostream>
+
+void onAction() {
+    std::cout << "Action executed!\n";
+}
+
+int main() {
+    // 1. Initialize display adapter and renderer (4 rows x 20 cols)
+    MockCharacterDisplayAdapter display(20, 4, true);
+    CharacterDisplayRenderer renderer(&display, 20, 4);
+    LcdMenu menu(renderer);
+
+    // 2. Define Submenu
+    MenuScreen subScreen({
+        ITEM_BACK("< Back"),
+        ITEM_COMMAND("Run Action", onAction),
+    });
+
+    // 3. Define Main Screen
+    MenuScreen mainScreen({
+        ITEM_SUBMENU("Sub Menu", subScreen),
+        ITEM_TOGGLE("Setting", "ON", "OFF"),
+        ITEM_COMMAND("Trigger", onAction),
+    });
+
+    // 4. Start menu
+    renderer.begin();
+    menu.setScreen(&mainScreen);
+
+    // 5. Navigate
+    menu.process(DOWN);   // Move cursor down
+    menu.process(ENTER);  // Toggle setting
+    return 0;
+}
+```
+
+---
+
+## BeagleBone Black Hardware Setup
+
+### Device Tree Configuration
+The input adapter is designed to work out-of-the-box with standard BeagleBone Black device tree overlays:
+
+```dts
+// Rotary Encoder (ti-eqep)
+&epwmss1 {
+    status = "okay";
+};
+
+&eqep1 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&powerunit_eqep1_pins>;
+};
+
+// Push Button (gpio-keys)
+&{/} {
+    gpio_keys {
+        compatible = "gpio-keys";
+        pinctrl-names = "default";
+        pinctrl-0 = <&powerunit_rotary_btn_pins>;
+
+        rotary_btn {
+            label = "INC_TASTE";
+            linux,code = <KEY_ENTER>;
+            gpios = <&gpio1 14 GPIO_ACTIVE_LOW>;
+            debounce-interval = <7>;
+        };
+    };
+};
+```
+
+### Hardware Integration Example (`examples/bbb_rotary_nhd_demo.cpp`)
+
+```cpp
+#include <LcdMenu.h>
+#include <display/NHD0420D3Z_UARTAdapter.h>
+#include <input/LinuxRotaryInputAdapter.h>
+#include <renderer/CharacterDisplayRenderer.h>
+
+int main() {
+    // 1. Initialize NHD-0420D3Z UART Display on /dev/ttyS3 (9600 baud)
+    NHD0420D3Z_UARTAdapter lcd("/dev/ttyS3", B9600, 20, 4);
+    CharacterDisplayRenderer renderer(&lcd, 20, 4);
+    LcdMenu menu(renderer);
+
+    // 2. Initialize BeagleBone Black Rotary & Button Adapter
+    LinuxRotaryInputAdapter rotaryInput(&menu);
+
+    // 3. Define Menus
+    MenuScreen mainScreen({
+        ITEM_BASIC("System Status"),
+        ITEM_TOGGLE("Relay 1", "ON", "OFF"),
+    });
+
+    renderer.begin();
+    rotaryInput.begin();
+    menu.setScreen(&mainScreen);
+
+    // 4. Main Event Loop
+    while (true) {
+        rotaryInput.observe();
+        menu.poll();
+        usleep(10000); // 10ms poll tick
+    }
+    return 0;
+}
+```
+
+---
+
+## Building & Testing
+
+Native compilation on the BeagleBone Black (via SSH) or any Linux PC using standard `g++` and `make`:
+
+```bash
+# Build static library, unit tests, and all demo binaries
+make all
+
+# Run automated unit test suite
+make test
+
+# Run interactive terminal simulation (PC arrow keys & Enter)
+./bin/tui_demo
+
+# Run BeagleBone Black hardware demo
+./bin/bbb_rotary_nhd_demo /dev/ttyS3
+```
+
+### Makefile Targets
+
+| Target | Description |
+|---|---|
+| `make lib` | Builds static library `build/liblcdmenu.a` |
+| `make test` | Compiles and runs `bin/test_linux_mock` |
+| `make bbb_demo` | Compiles BeagleBone Black hardware demo `bin/bbb_rotary_nhd_demo` |
+| `make tui_demo` | Compiles interactive terminal simulation `bin/tui_demo` |
+| `make simple` | Compiles starter demo `bin/simple_menu` |
+| `make clean` | Removes build directories and temporary files |

@@ -2,7 +2,23 @@
 #define LCD_MENU_UTILS_H
 
 #include "lcd_menu_constants.h"
-#include <Arduino.h>
+#include <chrono>
+#include <algorithm>
+#include <string.h>
+#include <stdio.h>
+
+template <typename T, typename L, typename H>
+constexpr auto constrain(const T& v, const L& lo, const H& hi) -> typename std::common_type<T, L, H>::type {
+    return (v < lo) ? lo : (hi < v) ? hi : v;
+}
+
+inline unsigned long millis() {
+    using namespace std::chrono;
+    static const auto start = steady_clock::now();
+    return static_cast<unsigned long>(
+        duration_cast<milliseconds>(steady_clock::now() - start).count()
+    );
+}
 
 inline void substring(const char* str, uint8_t start, uint8_t size, char* substr) {
     strncpy(substr, str + start, size);
@@ -40,25 +56,15 @@ inline void remove(char* str, uint8_t index, uint8_t count) {
 }
 
 #ifdef DEBUG
-#define LOG(...) log(__VA_ARGS__)
-inline void log(const __FlashStringHelper* command) {
-    String message(F("#LOG# "));
-    message += command;
-    message += '\n';
-    Serial.print(message);
-    Serial.flush();
+#include <iostream>
+inline void log_msg(const char* msg) {
+    std::cout << "#LOG# " << msg << "\n";
 }
-
 template <typename T>
-inline void log(const __FlashStringHelper* command, T value) {
-    String message(F("#LOG# "));
-    message += command;
-    message += F("=");
-    message += String(value);
-    message += '\n';
-    Serial.print(message);
-    Serial.flush();
+inline void log_msg(const char* msg, const T& val) {
+    std::cout << "#LOG# " << msg << "=" << val << "\n";
 }
+#define LOG(...) log_msg(__VA_ARGS__)
 #else
 #define LOG(...)  // No-op
 #endif

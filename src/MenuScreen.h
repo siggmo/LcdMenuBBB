@@ -5,7 +5,6 @@
 #include "renderer/MenuRenderer.h"
 #include "utils/lcd_menu_constants.h"
 #include "utils/lcd_menu_utils.h"
-#include "utils/std.h"
 #include <vector>
 
 /**
@@ -119,7 +118,7 @@ class MenuScreen {
     /**
      * @brief Get the number of items in the menu.
      */
-    const size_t size() { return items.size(); }
+    size_t size() const { return items.size(); }
 
   protected:
     /**

@@ -59,11 +59,14 @@ class WidgetRange : public BaseWidgetValue<V> {
      * - `DOWN` - decrement value and trigger callback;
      */
     bool process(LcdMenu* menu, const unsigned char command) override {
+        (void)menu;
         switch (command) {
             case UP:
+            case RIGHT:
                 if (step < 0 ? decrement() : increment()) BaseWidgetValue<V>::handleChange();
                 return true;
             case DOWN:
+            case LEFT:
                 if (step < 0 ? increment() : decrement()) BaseWidgetValue<V>::handleChange();
                 return true;
             default:

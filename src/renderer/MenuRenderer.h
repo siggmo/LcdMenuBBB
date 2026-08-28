@@ -2,7 +2,6 @@
 #define MENU_RENDERER_H
 
 #include "display/DisplayInterface.h"
-#include <Arduino.h>
 #include <utils/lcd_menu_utils.h>
 
 /**
@@ -106,7 +105,7 @@ class MenuRenderer {
         if (millis() - startTime < DISPLAY_TIMEOUT) {
             return;
         }
-        LOG(F("MenuRenderer::timeout"));
+        LOG("MenuRenderer::timeout");
         display->hide();
     }
 

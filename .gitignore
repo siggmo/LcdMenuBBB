@@ -12,5 +12,9 @@ _site/
 *.tar.gz
 *.lock
 _build/
+build/
+bin/
+*.txt
 docs/doxygen/
 docs/source/reference/api
+

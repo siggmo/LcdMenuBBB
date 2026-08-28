@@ -21,7 +21,7 @@ class ItemCommand : public BaseItemZeroWidget {
     ItemCommand(const char* text, void (*callback)()) : BaseItemZeroWidget(text), callback(callback) {}
 
   protected:
-    void handleCommit(LcdMenu* menu) override {
+    void handleCommit(LcdMenu* /*menu*/) override {
         if (callback) callback();
     }
 };

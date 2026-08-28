@@ -32,53 +32,25 @@ class ItemToggle : public MenuItem, public GraphicalMenuItem {
      * @param key key of the item
      * @param callback reference to callback function
      */
-    ItemToggle(const char* key, fptrBool callback)
+    ItemToggle(const char* key, fptrBool callback = NULL)
         : ItemToggle(key, false, callback) {}
 
-    /**
-     * @brief Construct a new Item Toggle object with an initial state
-     * and default ON/OFF texts.
-     *
-     * @param text
-     * @param enabled
-     * @param callback
-     */
-    ItemToggle(const char* text, boolean enabled, fptrBool callback)
+    ItemToggle(const char* text, bool enabled, fptrBool callback = NULL)
         : ItemToggle(text, "ON", "OFF", callback) {
         this->enabled = enabled;
     }
 
-    /**
-     * @brief Construct a new Item Toggle object.
-     * @param text the text of the item
-     * @param textOn display text when ON
-     * @param textOff display text when OFF
-     * @param callback reference to callback function
-     */
-    ItemToggle(const char* text, const char* textOn, const char* textOff, fptrBool callback)
+    ItemToggle(const char* text, const char* textOn, const char* textOff, fptrBool callback = NULL)
         : MenuItem(text),
           textOn(textOn),
           textOff(textOff),
           callback(callback) {}
 
-    /**
-     * @brief Get the integer callback function of this item.
-     * @return the integer callback function
-     */
     fptrBool getCallbackInt() { return callback; }
 
-    /**
-     * @brief Get the current state of this toggle item.
-     * @return the current state
-     */
-    boolean isOn() { return enabled; }
+    bool isOn() { return enabled; }
 
-    /**
-     * @brief Set the current state of this toggle item.
-     * @note You need to call `LcdMenu::refresh` after this method to see the changes.
-     * @param isOn the new state
-     */
-    void setIsOn(boolean isOn) { this->enabled = isOn; }
+    void setIsOn(bool isOn) { this->enabled = isOn; }
 
     const char* getTextOn() { return this->textOn; }
 

@@ -1,7 +1,7 @@
 // Creator: @ShishkinDmitriy
 #pragma once
 
-#include "utils/custom_printf.h"
+#include <cstdio>
 
 class LcdMenu;
 

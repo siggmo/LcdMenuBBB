@@ -7,7 +7,7 @@
 #include "GraphicalValueSelectionRenderer.h"
 #include "MenuRenderer.h"
 #include "display/GraphicalDisplayInterface.h"
-#include "utils/std.h"
+#include <vector>
 
 /**
  * @class GraphicalDisplayRenderer

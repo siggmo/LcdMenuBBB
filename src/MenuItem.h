@@ -125,7 +125,7 @@ class MenuItem {
      * @param command the character command, can be a printable character or a control command
      * @return true if command was successfully handled by item.
      */
-    virtual bool process(LcdMenu* menu, const unsigned char command) {
+    virtual bool process(LcdMenu* /*menu*/, const unsigned char /*command*/) {
         return false;
     };
     /**

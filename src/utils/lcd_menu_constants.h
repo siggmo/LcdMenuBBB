@@ -1,5 +1,5 @@
 #pragma once
-#include <Arduino.h>
+#include <stdint.h>
 
 typedef void (*fptr)();
 typedef void (*fptrInt)(int);
@@ -22,3 +22,8 @@ typedef void (*fptrBool)(bool);
 #ifndef DISPLAY_TIMEOUT
 #define DISPLAY_TIMEOUT 10000  // 10 seconds
 #endif
+
+#ifndef F
+#define F(s) (s)
+#endif
+

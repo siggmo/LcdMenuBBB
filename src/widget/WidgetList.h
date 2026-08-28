@@ -1,7 +1,6 @@
 #pragma once
 
 #include "BaseWidgetValue.h"
-#include "utils/std.h"
 #include <vector>
 
 /**
@@ -64,7 +63,7 @@ class WidgetList : public BaseWidgetValue<V> {
 
     bool isList() const override { return true; }
 
-    void updateValue(const __FlashStringHelper* action) {
+    void updateValue(const char* action) {
         BaseWidgetValue<V>::handleChange();
         LOG(action, (uint8_t)this->value);
     }

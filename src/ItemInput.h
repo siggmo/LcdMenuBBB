@@ -9,6 +9,7 @@
 #include <utils/lcd_menu_utils.h>
 
 #include <string.h>
+#include <cctype>
 
 /**
  * @brief Item that allows user to input string information.

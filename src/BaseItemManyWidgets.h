@@ -9,7 +9,6 @@
 #include "renderer/GraphicalMenuItem.h"
 #include "renderer/GraphicalValueSelectionRenderer.h"
 #include "utils/lcd_menu_utils.h"
-#include "utils/std.h"
 #include "widget/BaseWidget.h"
 #include <vector>
 

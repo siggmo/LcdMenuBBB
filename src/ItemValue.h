@@ -1,7 +1,6 @@
 #pragma once
 
-#include "display/GraphicalDisplayInterface.h"
-#include "utils/custom_printf.h"
+#include <cstdio>
 
 #include "BaseItemZeroWidget.h"
 
@@ -25,7 +24,7 @@ class ItemValue : public BaseItemZeroWidget {
     }
 
   protected:
-    void handleCommit(LcdMenu* menu) override {}
+    void handleCommit(LcdMenu* /*menu*/) override {}
 
     void draw(MenuRenderer* renderer) override {
         char buffer[ITEM_DRAW_BUFFER_SIZE];
