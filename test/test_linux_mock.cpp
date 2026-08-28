@@ -8,10 +8,13 @@
 #include <ItemValue.h>
 #include <LcdMenu.h>
 #include <display/MockCharacterDisplayAdapter.h>
+#include <input/LinuxRotaryInputAdapter.h>
 #include <renderer/CharacterDisplayRenderer.h>
 #include <cassert>
+#include <fstream>
 #include <iostream>
 #include <string>
+#include <unistd.h>
 
 #define TEST_ASSERT(cond, msg) \
     do { \
@@ -265,6 +268,48 @@ void test_mock_file_dump() {
     TEST_ASSERT(box.find("+--------------------+") != std::string::npos, "Formatted box has border");
 }
 
+void test_rotary_counter_wrap_around() {
+    std::cout << "\n[TEST] test_rotary_counter_wrap_around\n";
+    MockCharacterDisplayAdapter display(20, 4, false);
+    CharacterDisplayRenderer renderer(&display, 20, 4);
+    LcdMenu menu(renderer);
+
+    MenuScreen mainScreen({
+        new MenuItem("Item 0"),
+        new MenuItem("Item 1"),
+        new MenuItem("Item 2"),
+    });
+
+    renderer.begin();
+    menu.setScreen(&mainScreen);
+
+    std::string tempCounter = "/tmp/test_counter.txt";
+    std::ofstream out(tempCounter);
+    out << "58\n";
+    out.close();
+
+    // 2 counts per step, ceiling = 60
+    LinuxRotaryInputAdapter adapter(&menu, tempCounter, "/dev/null", 2, 60, false);
+    adapter.begin();
+    TEST_ASSERT(menu.getCursor() == 0, "Initial cursor at 0");
+
+    // Move forward across wrap-around: 58 -> 0 (delta = +2 ticks after wrap-around)
+    out.open(tempCounter, std::ofstream::trunc);
+    out << "0\n";
+    out.close();
+    adapter.observe();
+    TEST_ASSERT(menu.getCursor() == 1, "Cursor moved DOWN across ceiling wrap-around (58 -> 0)");
+
+    // Move backward across wrap-around: 0 -> 58 (delta = -2 ticks after wrap-around)
+    out.open(tempCounter, std::ofstream::trunc);
+    out << "58\n";
+    out.close();
+    adapter.observe();
+    TEST_ASSERT(menu.getCursor() == 0, "Cursor moved UP across ceiling wrap-around (0 -> 58)");
+
+    unlink(tempCounter.c_str());
+}
+
 int main() {
     std::cout << "========================================\n";
     std::cout << "Running LcdMenu Linux Unit Tests\n";
@@ -278,6 +323,7 @@ int main() {
     test_submenu_and_back();
     test_input_item_commit_and_cancel();
     test_mock_file_dump();
+    test_rotary_counter_wrap_around();
 
     std::cout << "\n========================================\n";
     std::cout << "ALL UNIT TESTS PASSED SUCCESSFULLY!\n";

@@ -29,6 +29,7 @@ class LinuxRotaryInputAdapter : public InputInterface {
     int evdevFd;
     int64_t lastCount;
     int countsPerStep;
+    int64_t ceiling;
     bool reverseDirection;
     int accumulatedCounts;
     bool initialized;
@@ -54,6 +55,7 @@ class LinuxRotaryInputAdapter : public InputInterface {
      * @param counterPath Path to counter count file (empty to auto-detect eQEP).
      * @param evdevPath Path to gpio-keys event device (empty to auto-detect gpio-keys).
      * @param countsPerStep Number of quadrature counter ticks per physical detent/step (divider, default 2).
+     * @param ceiling Modulus ceiling for hardware counter wrap-around (default 60 for BeagleBone eQEP, 0 to disable).
      * @param reverseDirection Reverse rotation direction mapping if true.
      * @param longPressMs Milliseconds required to trigger a long press (BACK). Default 500ms.
      */
@@ -62,6 +64,7 @@ class LinuxRotaryInputAdapter : public InputInterface {
         const std::string& counterPath = "",
         const std::string& evdevPath = "",
         int countsPerStep = 2,
+        int64_t ceiling = 60,
         bool reverseDirection = false,
         int longPressMs = 500);
 
@@ -74,6 +77,8 @@ class LinuxRotaryInputAdapter : public InputInterface {
     void setDivider(int divider) { setCountsPerStep(divider); }
     int getCountsPerStep() const { return countsPerStep; }
     int getDivider() const { return countsPerStep; }
+    void setCeiling(int64_t c) { ceiling = c; }
+    int64_t getCeiling() const { return ceiling; }
     void setReverseDirection(bool reverse) { reverseDirection = reverse; }
     void setLongPressMs(int ms) { longPressMs = ms > 0 ? ms : 500; }
     int getLongPressMs() const { return longPressMs; }

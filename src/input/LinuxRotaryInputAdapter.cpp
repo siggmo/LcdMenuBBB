@@ -15,6 +15,7 @@ LinuxRotaryInputAdapter::LinuxRotaryInputAdapter(
     const std::string& counterPath,
     const std::string& evdevPath,
     int countsPerStep,
+    int64_t ceiling,
     bool reverseDirection,
     int longPressMs)
     : InputInterface(menu),
@@ -24,6 +25,7 @@ LinuxRotaryInputAdapter::LinuxRotaryInputAdapter(
       evdevFd(-1),
       lastCount(0),
       countsPerStep(countsPerStep > 0 ? countsPerStep : 1),
+      ceiling(ceiling),
       reverseDirection(reverseDirection),
       accumulatedCounts(0),
       initialized(false),
@@ -154,6 +156,20 @@ bool LinuxRotaryInputAdapter::openCounter() {
         lastCount = std::strtoll(buf, nullptr, 10);
     }
 
+    // Auto-detect ceiling from sysfs if available
+    std::string ceilingPath = counterPath;
+    size_t pos = ceilingPath.rfind("/count");
+    if (pos != std::string::npos && pos + 6 == ceilingPath.length()) {
+        ceilingPath.replace(pos, 6, "/ceiling");
+        std::ifstream cFile(ceilingPath);
+        if (cFile.is_open()) {
+            int64_t cVal = 0;
+            if (cFile >> cVal && cVal > 0) {
+                ceiling = cVal;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -197,6 +213,16 @@ void LinuxRotaryInputAdapter::processEncoder() {
     lastCount = currentCount;
 
     if (delta == 0) return;
+
+    // Handle ceiling / modulus wrap-around (e.g. eQEP hardware wraps at ceiling)
+    if (ceiling > 0) {
+        int64_t halfCeiling = ceiling / 2;
+        if (delta > halfCeiling) {
+            delta -= ceiling;
+        } else if (delta < -halfCeiling) {
+            delta += ceiling;
+        }
+    }
 
     accumulatedCounts += delta;
 
