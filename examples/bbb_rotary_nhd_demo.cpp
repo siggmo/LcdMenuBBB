@@ -30,10 +30,41 @@ static bool pumpActive = true;
 static int uptimeSec = 0;
 static char unitTag[32] = "BBB-Node-1";
 
+void onBrightnessChange(const int val) {
+    std::cout << "[Event] LCD Brightness set to: " << val << "/8\n";
+}
+
+void onAlarmToggle(bool state) {
+    std::cout << "[Event] Alarm Sound toggled to: " << (state ? "ON" : "OFF") << "\n";
+}
+
+void onRelay1Toggle(bool state) {
+    std::cout << "[Event] Relay 1 toggled to: " << (state ? "CLOSED" : "OPEN") << "\n";
+}
+
 void onModeChange(const uint8_t index) {
     const char* modes[] = {"AUTO", "MANUAL", "ECO", "BOOST"};
     if (index < 4) {
         std::cout << "[Event] Mode changed to: " << modes[index] << "\n";
+    }
+}
+
+void onFanSpeedChange(const int val) {
+    std::cout << "[Event] Fan Speed set to: " << val << "%\n";
+}
+
+void onStatusLedToggle(bool state) {
+    std::cout << "[Event] Status LED toggled to: " << (state ? "ACTIVE" : "IDLE") << "\n";
+}
+
+void onPumpChange(const bool state) {
+    std::cout << "[Event] Main Pump toggled to: " << (state ? "ON" : "OFF") << "\n";
+}
+
+void onProfileChange(const uint8_t index) {
+    const char* profiles[] = {"DEFAULT", "PWR-SAVE", "HI-PERF"};
+    if (index < 3) {
+        std::cout << "[Event] Profile selected: " << profiles[index] << "\n";
     }
 }
 
@@ -62,15 +93,15 @@ int main(int argc, char* argv[]) {
     // 3. Define Submenu: Display Settings
     MenuScreen displaySettingsScreen({
         ITEM_BACK("< Back"),
-        ITEM_RANGE("Brightness", lcdBrightness, 1, 1, 8),
-        ITEM_TOGGLE("Alarm Sound", "ON", "OFF"),
+        ITEM_RANGE("Brightness", lcdBrightness, 1, 1, 8, "%d", 0, false, onBrightnessChange),
+        ITEM_TOGGLE("Alarm Sound", "ON", "OFF", onAlarmToggle),
     });
 
     // 4. Define Submenu: System Sensors
     MenuScreen sensorsScreen({
         ITEM_BACK("< Back"),
         ITEM_VALUE("Voltage", systemVoltage, "%.2f V"),
-        ITEM_TOGGLE("Relay 1", "CLOSED", "OPEN"),
+        ITEM_TOGGLE("Relay 1", "CLOSED", "OPEN", onRelay1Toggle),
     });
 
     // 5. Define Main Screen with 9 items (demonstrates scrolling with ^ and v indicators)
@@ -78,13 +109,11 @@ int main(int argc, char* argv[]) {
         ITEM_SUBMENU("Display Setup", displaySettingsScreen),
         ITEM_SUBMENU("Sensors/Relays", sensorsScreen),
         ITEM_LIST("Op Mode", std::vector<const char*>{"AUTO", "MANUAL", "ECO", "BOOST"}, onModeChange, 0, "%s", 0, true),
-        ITEM_RANGE("Fan Speed", fanSpeed, 5, 0, 100),
-        ITEM_TOGGLE("Status LED", "ACTIVE", "IDLE"),
-        ITEM_BOOL("Main Pump", pumpActive),
-        ITEM_INPUT("Unit Tag", unitTag, [](char* val) {
-            std::cout << "[Event] Unit Tag saved: " << val << "\n";
-        }),
-        ITEM_VALUE("Uptime", uptimeSec, "%d s"),
+        ITEM_RANGE("Fan Speed", fanSpeed, 5, 0, 100, "%d", 0, false, onFanSpeedChange),
+        ITEM_TOGGLE("Status LED", "ACTIVE", "IDLE", onStatusLedToggle),
+        ITEM_BOOL("Main Pump", pumpActive, "ON", "OFF", onPumpChange),
+        ITEM_LIST("Profile", std::vector<const char*>{"DEFAULT", "PWR-SAVE", "HI-PERF"}, onProfileChange, 0, "%s", 0, true),
+        ITEM_VALUE("Unit Tag", unitTag, "%s"),
         ITEM_COMMAND("Reboot System", onReboot),
     });
 
