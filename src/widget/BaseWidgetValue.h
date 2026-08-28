@@ -17,6 +17,7 @@ template <typename T>
 struct Ref {
     T& value;
     Ref(T& value) : value(value) {}
+    Ref(const Ref<T>& other) : value(other.value) {}
     bool operator==(T const& other) const noexcept { return value == other; }
     bool operator!=(T const& other) const noexcept { return value != other; }
     bool operator>(T const& other) const noexcept { return value > other; }
@@ -43,7 +44,7 @@ struct Ref {
         this->value = other;
         return *this;
     }
-    Ref<T>& operator=(Ref<T> other) noexcept {
+    Ref<T>& operator=(const Ref<T>& other) noexcept {
         this->value = other.value;
         return *this;
     }

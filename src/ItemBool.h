@@ -83,9 +83,9 @@ class ItemBool : public ItemWidget<V> {
 inline ItemBool<bool>* ITEM_BOOL(
     const char* text,
     const bool value,
-    const char* textOn,
-    const char* textOff,
-    void (*callback)(const bool),
+    const char* textOn = "ON",
+    const char* textOff = "OFF",
+    void (*callback)(const bool) = nullptr,
     const char* format = "%s",
     const uint8_t cursorOffset = 0) {
     return new ItemBool<bool>(text, value, textOn, textOff, format, cursorOffset, callback);

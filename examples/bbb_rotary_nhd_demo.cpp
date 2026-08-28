@@ -1,4 +1,5 @@
 #include <ItemBack.h>
+#include <ItemBool.h>
 #include <ItemCommand.h>
 #include <ItemInput.h>
 #include <ItemList.h>
@@ -15,6 +16,7 @@
 #include <cstdio>
 #include <iostream>
 #include <unistd.h>
+#include <vector>
 
 static volatile bool running = true;
 static void signalHandler(int /*signum*/) {
@@ -23,6 +25,21 @@ static void signalHandler(int /*signum*/) {
 
 static float systemVoltage = 5.02f;
 static int lcdBrightness = 8;
+static int fanSpeed = 65;
+static bool pumpActive = true;
+static int uptimeSec = 0;
+static char unitTag[32] = "BBB-Node-1";
+
+void onModeChange(const uint8_t index) {
+    const char* modes[] = {"AUTO", "MANUAL", "ECO", "BOOST"};
+    if (index < 4) {
+        std::cout << "[Event] Mode changed to: " << modes[index] << "\n";
+    }
+}
+
+void onReboot() {
+    std::cout << "[Action] Reboot command triggered!\n";
+}
 
 int main(int argc, char* argv[]) {
     // Graceful signal handling
@@ -56,14 +73,19 @@ int main(int argc, char* argv[]) {
         ITEM_TOGGLE("Relay 1", "CLOSED", "OPEN"),
     });
 
-    // 5. Define Main Screen
+    // 5. Define Main Screen with 9 items (demonstrates scrolling with ^ and v indicators)
     MenuScreen mainScreen({
         ITEM_SUBMENU("Display Setup", displaySettingsScreen),
         ITEM_SUBMENU("Sensors/Relays", sensorsScreen),
+        ITEM_LIST("Op Mode", std::vector<const char*>{"AUTO", "MANUAL", "ECO", "BOOST"}, onModeChange, 0, "%s", 0, true),
+        ITEM_RANGE("Fan Speed", fanSpeed, 5, 0, 100),
         ITEM_TOGGLE("Status LED", "ACTIVE", "IDLE"),
-        ITEM_COMMAND("Clear Screen", []() {
-            std::cout << "Command executed: Clear\n";
+        ITEM_BOOL("Main Pump", pumpActive),
+        ITEM_INPUT("Unit Tag", unitTag, [](char* val) {
+            std::cout << "[Event] Unit Tag saved: " << val << "\n";
         }),
+        ITEM_VALUE("Uptime", uptimeSec, "%d s"),
+        ITEM_COMMAND("Reboot System", onReboot),
     });
 
     // 6. Begin Hardware and Display Main Menu
@@ -74,9 +96,11 @@ int main(int argc, char* argv[]) {
     std::cout << "Menu initialized on " << uartPort << ".\n"
               << "eQEP Counter: " << rotaryInput.getCounterPath() << "\n"
               << "GPIO-Keys: " << rotaryInput.getEvdevPath() << "\n"
+              << "Controls: [Rotate] Scroll/Adjust | [Short Press] Select/Confirm | [Long Press] Back/Discard\n"
               << "Running event loop (press Ctrl+C to terminate)...\n";
 
     auto lastSensorUpdate = std::chrono::steady_clock::now();
+    auto startTime = std::chrono::steady_clock::now();
 
     // 7. Event Loop
     while (running) {
@@ -86,11 +110,12 @@ int main(int argc, char* argv[]) {
         // Update display timeout and bound value polling
         menu.poll();
 
-        // Simulate sensor update every 2 seconds
+        // Simulate periodic telemetry update
         auto now = std::chrono::steady_clock::now();
-        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastSensorUpdate).count() >= 2) {
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastSensorUpdate).count() >= 1) {
             lastSensorUpdate = now;
             systemVoltage = 5.00f + (static_cast<float>(rand() % 10) / 100.0f);
+            uptimeSec = std::chrono::duration_cast<std::chrono::seconds>(now - startTime).count();
         }
 
         usleep(10000);  // 10ms poll interval

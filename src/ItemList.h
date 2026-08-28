@@ -51,7 +51,7 @@ template <typename T>
 inline ItemList<T, uint8_t>* ITEM_LIST(
     const char* text,
     const std::vector<T>& values,
-    void (*callback)(const uint8_t),
+    void (*callback)(const uint8_t) = nullptr,
     const uint8_t activePosition = 0,
     const char* format = "%s",
     const uint8_t cursorOffset = 0,
