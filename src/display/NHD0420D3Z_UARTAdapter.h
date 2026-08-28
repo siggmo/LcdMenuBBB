@@ -25,15 +25,15 @@ class NHD0420D3Z_UARTAdapter : public CharacterDisplayInterface {
     bool backlightEnabled;
     bool blinkerEnabled;
 
+    std::vector<std::string> lineBuffer;
     std::vector<std::string> shadowBuffer;
-    uint8_t physicalCursorCol;
-    uint8_t physicalCursorRow;
     uint8_t logicalCursorCol;
     uint8_t logicalCursorRow;
 
     bool openPort();
     void closePort();
     ssize_t sendRaw(const void* data, size_t size);
+    void flushRow(uint8_t r);
 
   public:
     /**

@@ -17,10 +17,9 @@ NHD0420D3Z_UARTAdapter::NHD0420D3Z_UARTAdapter(
       fd(-1),
       backlightEnabled(true),
       blinkerEnabled(false),
-      physicalCursorCol(0xFF),
-      physicalCursorRow(0xFF),
       logicalCursorCol(0),
       logicalCursorRow(0) {
+    lineBuffer.resize(maxRows, std::string(maxCols, ' '));
     shadowBuffer.resize(maxRows, std::string(maxCols, ' '));
 }
 
@@ -107,13 +106,14 @@ void NHD0420D3Z_UARTAdapter::begin() {
 void NHD0420D3Z_UARTAdapter::clear() {
     uint8_t cmd[2] = {0xFE, 0x51};
     sendRaw(cmd, sizeof(cmd));
+    for (auto& row : lineBuffer) {
+        row.assign(maxCols, ' ');
+    }
     for (auto& row : shadowBuffer) {
         row.assign(maxCols, ' ');
     }
     logicalCursorCol = 0;
     logicalCursorRow = 0;
-    physicalCursorCol = 0;
-    physicalCursorRow = 0;
     usleep(2000);  // Screen clear takes ~1.5ms
 }
 
@@ -127,47 +127,47 @@ void NHD0420D3Z_UARTAdapter::hide() {
     sendRaw(cmd, sizeof(cmd));
 }
 
-void NHD0420D3Z_UARTAdapter::setCursor(uint8_t col, uint8_t row) {
-    uint8_t clampedCol = (col < maxCols) ? col : maxCols - 1;
-    uint8_t clampedRow = (row < maxRows) ? row : maxRows - 1;
-
-    logicalCursorCol = clampedCol;
-    logicalCursorRow = clampedRow;
-
-    if (physicalCursorCol != clampedCol || physicalCursorRow != clampedRow) {
+void NHD0420D3Z_UARTAdapter::flushRow(uint8_t r) {
+    if (r < maxRows && lineBuffer[r] != shadowBuffer[r]) {
         static const uint8_t rowOffsets[4] = {0x00, 0x40, 0x14, 0x54};
-        uint8_t pos = rowOffsets[clampedRow % 4] + clampedCol;
+        uint8_t pos = rowOffsets[r % 4];
         uint8_t cmd[3] = {0xFE, 0x45, pos};
         sendRaw(cmd, sizeof(cmd));
-        physicalCursorCol = clampedCol;
-        physicalCursorRow = clampedRow;
+        sendRaw(lineBuffer[r].data(), maxCols);
+        shadowBuffer[r] = lineBuffer[r];
+        if (blinkerEnabled) {
+            uint8_t bPos = rowOffsets[logicalCursorRow % 4] + logicalCursorCol;
+            uint8_t bcmd[3] = {0xFE, 0x45, bPos};
+            sendRaw(bcmd, sizeof(bcmd));
+        }
+    }
+}
+
+void NHD0420D3Z_UARTAdapter::setCursor(uint8_t col, uint8_t row) {
+    uint8_t prevRow = logicalCursorRow;
+    logicalCursorCol = (col < maxCols) ? col : maxCols - 1;
+    logicalCursorRow = (row < maxRows) ? row : maxRows - 1;
+
+    // Flush any pending line updates
+    flushRow(prevRow);
+    if (prevRow != logicalCursorRow) {
+        flushRow(logicalCursorRow);
+    }
+
+    if (blinkerEnabled) {
+        static const uint8_t rowOffsets[4] = {0x00, 0x40, 0x14, 0x54};
+        uint8_t bPos = rowOffsets[logicalCursorRow % 4] + logicalCursorCol;
+        uint8_t bcmd[3] = {0xFE, 0x45, bPos};
+        sendRaw(bcmd, sizeof(bcmd));
     }
 }
 
 void NHD0420D3Z_UARTAdapter::draw(uint8_t byte) {
     if (logicalCursorRow < maxRows && logicalCursorCol < maxCols) {
-        char ch = static_cast<char>(byte);
-        // Only transmit byte over UART if it differs from physical display content
-        if (shadowBuffer[logicalCursorRow][logicalCursorCol] != ch) {
-            // Position physical cursor if not already at logical target
-            if (physicalCursorRow != logicalCursorRow || physicalCursorCol != logicalCursorCol) {
-                static const uint8_t rowOffsets[4] = {0x00, 0x40, 0x14, 0x54};
-                uint8_t pos = rowOffsets[logicalCursorRow % 4] + logicalCursorCol;
-                uint8_t cmd[3] = {0xFE, 0x45, pos};
-                sendRaw(cmd, sizeof(cmd));
-                physicalCursorRow = logicalCursorRow;
-                physicalCursorCol = logicalCursorCol;
-            }
-            sendRaw(&byte, 1);
-            shadowBuffer[logicalCursorRow][logicalCursorCol] = ch;
-            physicalCursorCol++;
-            if (physicalCursorCol >= maxCols) {
-                physicalCursorCol = 0;
-                physicalCursorRow = (physicalCursorRow + 1) % maxRows;
-            }
-        }
+        lineBuffer[logicalCursorRow][logicalCursorCol] = static_cast<char>(byte);
         logicalCursorCol++;
         if (logicalCursorCol >= maxCols) {
+            flushRow(logicalCursorRow);
             logicalCursorCol = 0;
             logicalCursorRow = (logicalCursorRow + 1) % maxRows;
         }
@@ -206,8 +206,14 @@ void NHD0420D3Z_UARTAdapter::createChar(uint8_t id, uint8_t* c) {
 
 void NHD0420D3Z_UARTAdapter::drawBlinker() {
     blinkerEnabled = true;
+    flushRow(logicalCursorRow);
     uint8_t cmd[2] = {0xFE, 0x4B};
     sendRaw(cmd, sizeof(cmd));
+
+    static const uint8_t rowOffsets[4] = {0x00, 0x40, 0x14, 0x54};
+    uint8_t bPos = rowOffsets[logicalCursorRow % 4] + logicalCursorCol;
+    uint8_t bcmd[3] = {0xFE, 0x45, bPos};
+    sendRaw(bcmd, sizeof(bcmd));
 }
 
 void NHD0420D3Z_UARTAdapter::clearBlinker() {

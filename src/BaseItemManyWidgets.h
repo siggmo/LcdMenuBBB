@@ -187,20 +187,9 @@ class BaseItemManyWidgets : public MenuItem, public GraphicalMenuItem {
                 int16_t shift = static_cast<int16_t>(index) - valueArea;
                 renderer->viewShift = shift > 0 ? static_cast<uint8_t>(shift) : 0;
 
-                if (valueSelectionRenderer != NULL) {
-                    if (activeSegmentLength > 0) {
-                        valueSelectionRenderer->setValueSelection(activeSegmentStart, activeSegmentLength);
-                    } else {
-                        valueSelectionRenderer->clearValueSelection();
-                    }
-                }
-
-                // Draw the item with the renderer, indicating if it's the last widget
-                renderer->drawItem(text, buf, i == widgets.size() - 1);
-                // Calculate the cursor column position for the active widget
-                uint8_t endCol = renderer->getCursorCol();
-                uint8_t offset = static_cast<uint8_t>(1 + widgets[i]->cursorOffset);
-                cursorCol = endCol > offset ? endCol - offset : 0;
+                // Position cursor at the first character of the active value widget
+                uint8_t startCol = (text == NULL ? 0 : strlen(text)) + 2 + activeSegmentStart;
+                cursorCol = startCol + widgets[i]->cursorOffset;
             }
         }
         buf[index < ITEM_DRAW_BUFFER_SIZE ? index : ITEM_DRAW_BUFFER_SIZE - 1] = '\0';
