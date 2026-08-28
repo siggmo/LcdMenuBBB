@@ -95,7 +95,7 @@ inline MenuScreen& getMainScreen() {
         ITEM_TOGGLE("Status LED", "ACTIVE", "IDLE", onStatusLedToggle),
         ITEM_BOOL("Main Pump", pumpActive, "ON", "OFF", onPumpChange),
         ITEM_LIST("Profile", std::vector<const char*>{"DEFAULT", "PWR-SAVE", "HI-PERF"}, onProfileChange, 0, "%s", 0, true),
-        ITEM_VALUE("Unit Tag", unitTag, "%s"),
+        ITEM_VALUE("Unit Tag", unitTag, "%s", true, 120),
         ITEM_COMMAND("Reboot System", onReboot),
     });
     return screen;

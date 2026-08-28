@@ -21,17 +21,24 @@ class ItemValue : public BaseItemZeroWidget {
   private:
     T& value;
     const char* format;
+    bool autoScroll;
+    uint16_t scrollSpeedMs;
     uint16_t scrollOffset = 0;
     unsigned long lastScrollTime = 0;
     uint8_t holdCounter = 4;
-    uint16_t scrollSpeedMs = 250;
     char lastRenderedValue[ITEM_DRAW_BUFFER_SIZE] = {0};
 
   public:
-    ItemValue(const char* text, T& value, const char* format, uint16_t scrollSpeedMs = 250)
+    ItemValue(
+        const char* text,
+        T& value,
+        const char* format = "%s",
+        bool autoScroll = false,
+        uint16_t scrollSpeedMs = 120)
         : BaseItemZeroWidget(text),
           value(value),
           format(format),
+          autoScroll(autoScroll),
           scrollSpeedMs(scrollSpeedMs) {
         this->polling = true;
     }
@@ -56,15 +63,19 @@ class ItemValue : public BaseItemZeroWidget {
         uint8_t prefixLen = (text != nullptr ? strlen(text) : 0) + 2;  // cursor + text + ':'
         uint8_t availWidth = (effectiveCols > prefixLen) ? (effectiveCols - prefixLen) : 0;
         size_t valLen = strlen(buffer);
+        bool focused = renderer ? renderer->isFocused() : false;
 
-        if (availWidth == 0 || valLen <= availWidth) {
-            // Fits within available columns - draw directly
+        // Only scroll if autoScroll is enabled, item is currently focused, and value overflows
+        if (!autoScroll || !focused || availWidth == 0 || valLen <= availWidth) {
+            if (!focused) {
+                scrollOffset = 0;
+                holdCounter = 4;
+            }
             renderer->drawItem(text, buffer);
-            scrollOffset = 0;
             return;
         }
 
-        // Value exceeds available space -> marquee ticker auto-scroll
+        // Focused + autoScroll enabled + value exceeds available space -> marquee ticker
         unsigned long now = millis();
         if (now - lastScrollTime >= scrollSpeedMs) {
             lastScrollTime = now;
@@ -112,7 +123,8 @@ class ItemValue : public BaseItemZeroWidget {
  * @param text the text to display for the item
  * @param value the value to display
  * @param format the format string to use when displaying the value
- * @param scrollSpeedMs ticker scroll speed in milliseconds per step (default 250ms)
+ * @param autoScroll if true, auto-scrolls horizontally when the cursor focuses on this item and value overflows
+ * @param scrollSpeedMs ticker scroll speed in milliseconds per step (default 120ms)
  * @return MenuItem* the created item
  */
 template <typename T>
@@ -120,6 +132,7 @@ inline MenuItem* ITEM_VALUE(
     const char* text,
     T& value,
     const char* format = "%s",
-    uint16_t scrollSpeedMs = 250) {
-    return new ItemValue<T>(text, value, format, scrollSpeedMs);
+    bool autoScroll = false,
+    uint16_t scrollSpeedMs = 120) {
+    return new ItemValue<T>(text, value, format, autoScroll, scrollSpeedMs);
 }

@@ -410,24 +410,45 @@ void test_item_value_auto_scroll() {
 
     char longStationName[64] = "Station-Alpha-Central-Hub-01";
     MenuScreen mainScreen({
-        ITEM_VALUE("Tag", longStationName, "%s", 10),
+        ITEM_VALUE("TagAuto", longStationName, "%s", true, 10), // Row 0: autoScroll = true
+        ITEM_VALUE("TagStatic", longStationName, "%s", false, 10), // Row 1: autoScroll = false
     });
 
     renderer.begin();
     menu.setScreen(&mainScreen);
 
-    // Initial draw: row 0 starts with 'Station'
-    std::string initialRow = display.getRow(0);
-    TEST_ASSERT(initialRow.find("Station") != std::string::npos, "Initial draw displays start of long value");
+    // Initial state: Cursor on row 0 (TagAuto has focus)
+    TEST_ASSERT(menu.getCursor() == 0, "Cursor initially at index 0");
+    std::string initialRow0 = display.getRow(0);
+    std::string initialRow1 = display.getRow(1);
+    TEST_ASSERT(initialRow0.find("Station") != std::string::npos, "Initial draw displays start of long value");
 
-    // Advance ticks to trigger marquee scroll past initial hold
+    // Row 1 (unfocused) does not scroll
     for (int i = 0; i < 20; i++) {
         usleep(20000);  // 20ms > 10ms scrollSpeedMs
         menu.poll(10);
     }
+    TEST_ASSERT(display.getRow(1) == initialRow1, "Unfocused item does not scroll");
 
-    std::string scrolledRow = display.getRow(0);
-    TEST_ASSERT(scrolledRow != initialRow, "Row updated during marquee auto-scroll");
+    // Row 0 (focused) did scroll
+    std::string scrolledRow0 = display.getRow(0);
+    TEST_ASSERT(scrolledRow0 != initialRow0, "Focused item with autoScroll=true scrolled");
+
+    // Move cursor down to row 1 (leaving focus on row 0)
+    menu.process(DOWN);
+    TEST_ASSERT(menu.getCursor() == 1, "Cursor moved to row 1");
+
+    // Row 0 should immediately reset back to start upon losing focus
+    std::string row0AfterLeave = display.getRow(0);
+    // Note: cursor character on row 0 changed from '>' to ' ', but value text reset to 'Station'
+    TEST_ASSERT(row0AfterLeave.find("Station") != std::string::npos, "Row 0 reset to start upon losing focus");
+
+    // Row 1 (now focused, but autoScroll=false) should stay static
+    for (int i = 0; i < 10; i++) {
+        usleep(20000);
+        menu.poll(10);
+    }
+    TEST_ASSERT(display.getRow(1).find("Station") != std::string::npos, "Focused item with autoScroll=false stays static");
 }
 
 int main() {

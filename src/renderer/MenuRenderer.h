@@ -134,6 +134,11 @@ class MenuRenderer {
     virtual uint8_t getMaxCols() const;
 
     /**
+     * @brief Returns true if the item currently being rendered has focus/cursor.
+     */
+    bool isFocused() const { return hasFocus; }
+
+    /**
      * @brief Optional extension lookup for renderer-specific capabilities.
      *
      * Returns NULL when extension is not supported.
