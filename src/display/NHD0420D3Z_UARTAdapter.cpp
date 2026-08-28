@@ -128,8 +128,20 @@ void NHD0420D3Z_UARTAdapter::hide() {
 }
 
 void NHD0420D3Z_UARTAdapter::setCursor(uint8_t col, uint8_t row) {
-    logicalCursorCol = (col < maxCols) ? col : maxCols - 1;
-    logicalCursorRow = (row < maxRows) ? row : maxRows - 1;
+    uint8_t clampedCol = (col < maxCols) ? col : maxCols - 1;
+    uint8_t clampedRow = (row < maxRows) ? row : maxRows - 1;
+
+    logicalCursorCol = clampedCol;
+    logicalCursorRow = clampedRow;
+
+    if (physicalCursorCol != clampedCol || physicalCursorRow != clampedRow) {
+        static const uint8_t rowOffsets[4] = {0x00, 0x40, 0x14, 0x54};
+        uint8_t pos = rowOffsets[clampedRow % 4] + clampedCol;
+        uint8_t cmd[3] = {0xFE, 0x45, pos};
+        sendRaw(cmd, sizeof(cmd));
+        physicalCursorCol = clampedCol;
+        physicalCursorRow = clampedRow;
+    }
 }
 
 void NHD0420D3Z_UARTAdapter::draw(uint8_t byte) {
